@@ -9,6 +9,8 @@ import '../../models/bungtemin_menu.dart';
 import '../../models/meeting_item.dart';
 import '../../models/news_item.dart';
 import '../../services/bungtemin_api.dart';
+import '../../services/inbox_service.dart';
+import '../inbox/broadcast_inbox_screen.dart';
 import '../news/news_detail_screen.dart';
 import 'promo_modal_dialog.dart';
 
@@ -36,10 +38,12 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   final _api = BungteminApi();
+  final _inboxService = InboxService();
   final _bannerCtrl = PageController();
   Timer? _bannerTimer;
 
   int _bannerPage = 0;
+  int _unreadInboxCount = 0;
   bool _loadingNews = true;
   bool _notificationsRead = false;
   bool _promoChecked = false;
@@ -57,8 +61,51 @@ class _HomeTabState extends State<HomeTab> {
     super.initState();
     _loadCachedHomeData();
     _loadAll();
+    _loadUnreadInboxCount();
     _startBannerAutoPlay();
     _checkAndShowPromoModal();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session?.noreg != widget.session?.noreg) {
+      _loadUnreadInboxCount();
+    }
+  }
+
+  Future<void> _loadUnreadInboxCount() async {
+    if (widget.session == null) {
+      if (mounted && _unreadInboxCount != 0) {
+        setState(() => _unreadInboxCount = 0);
+      }
+      return;
+    }
+    try {
+      final res = await _inboxService.fetchList();
+      if (!mounted) return;
+      setState(() => _unreadInboxCount = res.unreadCount);
+    } catch (_) {
+      // Abaikan error jaringan agar tidak mengganggu home
+    }
+  }
+
+  Future<void> _openInboxWithRefresh() async {
+    if (widget.session == null) {
+      widget.onRequireLogin(
+        'Masuk terlebih dahulu untuk membuka Kotak Masuk Broadcast.',
+        () => _openInboxWithRefresh(),
+      );
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const BroadcastInboxScreen(),
+      ),
+    );
+    if (mounted) {
+      _loadUnreadInboxCount();
+    }
   }
 
   @override
@@ -174,6 +221,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _loadAll() async {
+    unawaited(_loadUnreadInboxCount());
     if (_internalNews.isEmpty && _externalNews.isEmpty) {
       setState(() => _loadingNews = true);
     }
@@ -738,17 +786,57 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                       Row(
                         children: [
-                          _TopGlassButton(
-                            icon: Icons.qr_code_scanner_rounded,
-                            tooltip: 'Scan QR / Presensi',
-                            onTap: () => widget.onMenuTap(
-                              const BungteminMenuItem(
-                                label: 'BTScan',
-                                iconAsset: 'assets/icon/9.png',
-                                route: '/scanner',
-                                requiresLogin: true,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              _TopGlassButton(
+                                icon: Icons.mail_outline_rounded,
+                                tooltip: 'Kotak Masuk Broadcast',
+                                onTap: _openInboxWithRefresh,
                               ),
-                            ),
+                              if (_unreadInboxCount > 0)
+                                Positioned(
+                                  top: -3,
+                                  right: -3,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1.5,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.rose,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.rose
+                                              .withValues(alpha: 0.65),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _unreadInboxCount > 99
+                                          ? '99+'
+                                          : '$_unreadInboxCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(width: 8),
                           Stack(
