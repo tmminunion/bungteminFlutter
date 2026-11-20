@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme.dart';
@@ -59,6 +60,13 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
     }
   }
 
+  String _plainPreview(String raw) {
+    return raw
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,6 +113,7 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
                         itemBuilder: (_, idx) {
                           final item = _items[idx];
                           final (catLabel, catColor, catIcon) = _catMeta(item.category);
+                          final preview = _plainPreview(item.body);
                           return Card(
                             elevation: 0,
                             margin: const EdgeInsets.only(bottom: 10),
@@ -186,10 +195,10 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
                                         color: const Color(0xFF0F172A),
                                       ),
                                     ),
-                                    if (item.body.isNotEmpty) ...[
+                                    if (preview.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       Text(
-                                        item.body,
+                                        preview,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -277,10 +286,26 @@ class _BroadcastInboxDetailScreenState
     );
   }
 
-  Future<void> _openAttachment() async {
-    final uri = Uri.tryParse(widget.item.attachmentUrl.trim());
+  Future<void> _openUrl(String raw) async {
+    final uri = Uri.tryParse(raw.trim());
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  bool _looksLikeHtml(String s) {
+    return RegExp(
+      r'<(div|p|br|table|tr|td|h[1-6]|ul|ol|li|img|strong|b|em|a|span|section|header)\b',
+      caseSensitive: false,
+    ).hasMatch(s);
+  }
+
+  bool _isImageUrl(String url) {
+    final l = url.toLowerCase();
+    return l.endsWith('.jpg') ||
+        l.endsWith('.jpeg') ||
+        l.endsWith('.png') ||
+        l.endsWith('.webp') ||
+        l.endsWith('.gif');
   }
 
   Future<void> _confirmAction() async {
@@ -339,110 +364,235 @@ class _BroadcastInboxDetailScreenState
     final hasConfirmBtn =
         item.actionLabel.isNotEmpty || item.category == 'konfirmasi';
     final hasForm = item.formSchema.isNotEmpty;
+    final isHtml = _looksLikeHtml(item.body);
+    final isImgAtt =
+        item.attachmentUrl.isNotEmpty && _isImageUrl(item.attachmentUrl);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        title: const Text('Detail Pesan', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        elevation: 0.5,
+        title: const Text(
+          'Detail Inbox',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
+          // Header Email-style
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.title,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 19,
                     fontWeight: FontWeight.w800,
+                    height: 1.25,
                     color: Color(0xFF0F172A),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
-                  'Dari: ${item.createdByName} • ${item.createdAt}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  'From: ${item.createdByName}',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
                 ),
-                if (item.body.isNotEmpty) ...[
-                  const Divider(height: 22),
-                  SelectableText(
-                    item.body,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: Color(0xFF1E293B),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  item.createdAt,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Color(0xFF64748B),
                   ),
-                ],
-                if (item.attachmentUrl.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: OutlinedButton.icon(
-                      onPressed: _openAttachment,
-                      icon: Icon(
-                        item.category == 'pdf'
-                            ? Icons.picture_as_pdf_rounded
-                            : Icons.open_in_new_rounded,
-                      ),
-                      label: Text(
-                        item.attachmentLabel.isNotEmpty
-                            ? item.attachmentLabel
-                            : (item.category == 'pdf'
-                                ? 'Buka Dokumen PDF'
-                                : 'Buka Tautan'),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
-          if (hasConfirmBtn && !hasForm) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _confirmed
-                      ? const Color(0xFF059669)
-                      : AppColors.navy,
+          const SizedBox(height: 12),
+
+          // Konten Newsletter / HTML / Template Card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
-                onPressed: (_submitting || _confirmed) ? null : _confirmAction,
-                icon: Icon(
-                  _confirmed ? Icons.check_circle_rounded : Icons.touch_app_rounded,
-                ),
-                label: Text(
-                  _confirmed
-                      ? 'Sudah Dikonfirmasi'
-                      : (item.actionLabel.isNotEmpty
-                          ? item.actionLabel
-                          : 'Konfirmasi'),
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!isHtml)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 14),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0B3B8C), Color(0xFF0F766E)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'PUK SP LEM SPSI\nPT. TMMIN | BUNGTEMIN',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            item.category.toUpperCase(),
+                            style: const TextStyle(
+                              color: Color(0xFF0B3B8C),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isImgAtt)
+                  Image.network(
+                    item.attachmentUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                if (item.body.isNotEmpty)
+                  Padding(
+                    padding: isHtml
+                        ? const EdgeInsets.all(14)
+                        : const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                    child: isHtml
+                        ? HtmlWidget(
+                            item.body,
+                            onTapUrl: (url) {
+                              _openUrl(url);
+                              return true;
+                            },
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              height: 1.55,
+                              color: Color(0xFF1E293B),
+                            ),
+                          )
+                        : SelectableText(
+                            item.body,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              height: 1.6,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                  ),
+                if (item.attachmentUrl.isNotEmpty && !isImgAtt)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => _openUrl(item.attachmentUrl),
+                        icon: Icon(
+                          item.category == 'pdf'
+                              ? Icons.picture_as_pdf_rounded
+                              : Icons.open_in_new_rounded,
+                        ),
+                        label: Text(
+                          item.attachmentLabel.isNotEmpty
+                              ? item.attachmentLabel
+                              : (item.category == 'pdf'
+                                  ? 'Buka Dokumen PDF'
+                                  : 'Buka Tautan'),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          if (hasConfirmBtn && !hasForm)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _confirmed
+                        ? const Color(0xFF059669)
+                        : AppColors.navy,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: (_submitting || _confirmed) ? null : _confirmAction,
+                  icon: Icon(
+                    _confirmed
+                        ? Icons.check_circle_rounded
+                        : Icons.touch_app_rounded,
+                  ),
+                  label: Text(
+                    _confirmed
+                        ? 'Sudah Dikonfirmasi'
+                        : (item.actionLabel.isNotEmpty
+                            ? item.actionLabel
+                            : 'Konfirmasi'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ),
-          ],
-          if (hasForm) ...[
-            const SizedBox(height: 16),
+
+          if (hasForm)
             Container(
+              margin: const EdgeInsets.fromLTRB(14, 14, 14, 24),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,7 +603,7 @@ class _BroadcastInboxDetailScreenState
                         child: Text(
                           'Formulir Isian',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w800),
+                              fontSize: 15.5, fontWeight: FontWeight.w800),
                         ),
                       ),
                       if (_submitted)
@@ -474,13 +624,18 @@ class _BroadcastInboxDetailScreenState
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF0F766E),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: _submitting ? null : _submitForm,
                       icon: const Icon(Icons.send_rounded),
                       label: Text(
                         _submitting
                             ? 'Mengirim...'
-                            : (_submitted ? 'Perbarui Jawaban' : 'Kirim Jawaban'),
+                            : (_submitted
+                                ? 'Perbarui Jawaban'
+                                : 'Kirim Jawaban'),
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -488,7 +643,7 @@ class _BroadcastInboxDetailScreenState
                 ],
               ),
             ),
-          ],
+          const SizedBox(height: 24),
         ],
       ),
     );
