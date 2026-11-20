@@ -371,24 +371,6 @@ jobs:
           print(f"Auto-cleanup selesai: {max(0, len(arts)-1)} artifact lama dihapus, 1 terbaru dipertahankan.")
           PY
 
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="v${{ steps.meta.outputs.version_name }}"
-          TITLE="Bungtemin v${{ steps.meta.outputs.version_name }} (Code ${{ steps.meta.outputs.version_code }})"
-          NOTES="Build Signed Android Release Bungtemin v${{ steps.meta.outputs.version_name }} (Code ${{ steps.meta.outputs.version_code }} | App ID: com.bung.teminapps | APK: ${{ steps.meta.outputs.apk_mb }} MB | AAB: ${{ steps.meta.outputs.aab_mb }} MB)"
-
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${{ steps.meta.outputs.out_apk }}" "${{ steps.meta.outputs.out_aab }}" --clobber
-            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES"
-          else
-            gh release create "$TAG" "${{ steps.meta.outputs.out_apk }}" "${{ steps.meta.outputs.out_aab }}" \
-              --target "${{ github.sha }}" \
-              --title "$TITLE" \
-              --notes "$NOTES"
-          fi
-
       - name: Validate Play Store Credentials & Notes
         if: github.event_name == 'workflow_dispatch' && inputs.play_track != 'none'
         id: play_prep
