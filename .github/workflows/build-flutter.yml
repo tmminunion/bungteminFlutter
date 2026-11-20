@@ -1,0 +1,693 @@
+name: Build Flutter Android APK & AAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      play_track:
+        description: 'Target upload Google Play Store'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - internal
+          - production
+      play_status:
+        description: 'Status rilis Play Store'
+        required: true
+        default: 'completed'
+        type: choice
+        options:
+          - completed
+          - draft
+      release_notes:
+        description: 'Catatan rilis What is New ID (opsional)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build-flutter:
+    name: Analyze, Test & Build Signed Android Release
+    runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.meta.outputs.version_name }}
+      out_apk: ${{ steps.meta.outputs.out_apk }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Flutter (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Bootstrap Official Android Project, Keystore & Firebase FCM
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ ! -f android/gradlew ]; then
+            echo "📱 Membuat kerangka resmi Android Flutter (com.bung.teminapps)..."
+            flutter create /tmp/f_tpl --project-name teminapps --org com.bung --platforms=android
+            cp -r /tmp/f_tpl/android ./android
+            rm -rf /tmp/f_tpl
+          fi
+
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > android/app/google-services.json
+          elif [ -f android-config/google-services.json ]; then
+            cp android-config/google-services.json android/app/google-services.json
+          else
+            echo "::error::Secret GOOGLE_SERVICES_JSON_BASE64 atau android-config/google-services.json tidak ditemukan!"
+            exit 1
+          fi
+
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Secret keystore Android belum lengkap (ANDROID_KEYSTORE_BASE64 / STORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD)!"
+            exit 1
+          fi
+
+          printf '%s' "$KEYSTORE_B64" | base64 -d > android/app/upload-keystore.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
+            "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest_path = Path("android/app/src/main/AndroidManifest.xml")
+          manifest = manifest_path.read_text()
+          for perm in [
+              "android.permission.INTERNET",
+              "android.permission.POST_NOTIFICATIONS",
+              "android.permission.NFC",
+          ]:
+              tag = f'<uses-permission android:name="{perm}"/>'
+              if perm not in manifest:
+                  manifest = manifest.replace("<application", f"{tag}\n    <application", 1)
+
+          nfc_feat = '<uses-feature android:name="android.hardware.nfc" android:required="false"/>'
+          if "android.hardware.nfc" not in manifest:
+              manifest = manifest.replace("<application", f"{nfc_feat}\n    <application", 1)
+
+          manifest = re.sub(r'android:label="[^"]*"', 'android:label="Bungtemin"', manifest, count=1)
+
+          # Hardening VAT / MobSF Security Audit:
+          # 1. Matikan ADB Backup & Auto-Backup cloud untuk mencegah ekstraksi data sesi lokal
+          # 2. Blokir Cleartext HTTP traffic (wajib HTTPS/TLS)
+          for attr_k, attr_v in [
+              ("android:allowBackup", "false"),
+              ("android:fullBackupContent", "false"),
+              ("android:usesCleartextTraffic", "false"),
+          ]:
+              if attr_k in manifest:
+                  manifest = re.sub(rf'{attr_k}="[^"]*"', f'{attr_k}="{attr_v}"', manifest)
+              else:
+                  manifest = manifest.replace("<application", f'<application\n        {attr_k}="{attr_v}"', 1)
+
+          fcm_meta = (
+              '        <meta-data\n'
+              '            android:name="com.google.firebase.messaging.default_notification_channel_id"\n'
+              '            android:value="chat_messages" />\n'
+              '        <meta-data\n'
+              '            android:name="com.google.firebase.messaging.default_notification_icon"\n'
+              '            android:resource="@mipmap/ic_launcher" />\n'
+          )
+          if "default_notification_channel_id" not in manifest:
+              manifest = manifest.replace("</application>", f"{fcm_meta}    </application>", 1)
+          manifest_path.write_text(manifest)
+
+          settings_kts = Path("android/settings.gradle.kts")
+          if settings_kts.exists():
+              s = settings_kts.read_text()
+              if "com.google.gms.google-services" not in s:
+                  s = re.sub(
+                      r'(plugins\s*\{)',
+                      r'\1\n    id("com.google.gms.google-services") version "4.4.2" apply false',
+                      s,
+                      count=1,
+                  )
+                  settings_kts.write_text(s)
+
+          root_kts = Path("android/build.gradle.kts")
+          if root_kts.exists():
+              rk = root_kts.read_text()
+              if "LibraryExtension" not in rk:
+                  # afterEvaluate didaftarkan dari root SEBELUM subproject dievaluasi, sehingga
+                  # berjalan setelah build.gradle plugin (mis. nfc_manager: compileSdk 31) dan menimpanya.
+                  # state.executed: lewati project yang sudah dievaluasi (mis. :app via evaluationDependsOn).
+                  rk += (
+                      "\nsubprojects {\n"
+                      "    if (!state.executed) {\n"
+                      "        afterEvaluate {\n"
+                      "            if (plugins.hasPlugin(\"com.android.library\")) {\n"
+                      "                extensions.configure<com.android.build.gradle.LibraryExtension> {\n"
+                      "                    compileSdk = 37\n"
+                      "                }\n"
+                      "            }\n"
+                      "        }\n"
+                      "    }\n"
+                      "}\n"
+                  )
+                  root_kts.write_text(rk)
+
+          app_kts = Path("android/app/build.gradle.kts")
+          if app_kts.exists():
+              g = app_kts.read_text()
+              if "java.util.Properties" not in g:
+                  g = (
+                      "import java.util.Properties\n"
+                      "import java.io.FileInputStream\n\n"
+                      "val keystoreProperties = Properties()\n"
+                      "val keystorePropertiesFile = rootProject.file(\"key.properties\")\n"
+                      "if (keystorePropertiesFile.exists()) {\n"
+                      "    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n"
+                      "}\n\n"
+                  ) + g
+
+              if "com.google.gms.google-services" not in g:
+                  g = g.replace(
+                      'id("dev.flutter.flutter-gradle-plugin")',
+                      'id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")',
+                      1,
+                  )
+
+              g = re.sub(
+                  r'compileSdk(?:Version)?\s*=\s*(?:flutter\.compileSdkVersion|\d+)',
+                  'compileSdk = 37',
+                  g,
+                  count=1,
+              )
+              g = g.replace("minSdk = flutter.minSdkVersion", "minSdk = 24")
+
+              if "isCoreLibraryDesugaringEnabled" not in g:
+                  g = re.sub(
+                      r'(compileOptions\s*\{)',
+                      r'\1\n        isCoreLibraryDesugaringEnabled = true',
+                      g,
+                      count=1,
+                  )
+
+              if 'create("release")' not in g:
+                  signing_block = (
+                      '    signingConfigs {\n'
+                      '        create("release") {\n'
+                      '            keyAlias = keystoreProperties.getProperty("keyAlias")\n'
+                      '            keyPassword = keystoreProperties.getProperty("keyPassword")\n'
+                      '            storeFile = file(keystoreProperties.getProperty("storeFile"))\n'
+                      '            storePassword = keystoreProperties.getProperty("storePassword")\n'
+                      '        }\n'
+                      '    }\n\n'
+                  )
+                  g = re.sub(r'([ \t]*buildTypes\s*\{)', signing_block + r'\1', g, count=1)
+
+              g = g.replace(
+                  'signingConfig = signingConfigs.getByName("debug")',
+                  'signingConfig = signingConfigs.getByName("release")',
+              )
+
+              if "desugar_jdk_libs" not in g:
+                  g += (
+                      '\ndependencies {\n'
+                      '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n'
+                      '}\n'
+                  )
+
+              if "androidx.activity:activity-ktx" not in g:
+                  g += (
+                      '\ndependencies {\n'
+                      '    implementation("androidx.activity:activity-ktx:1.10.1")\n'
+                      '}\n'
+                  )
+
+              app_kts.write_text(g)
+
+          # Android 15 (SDK 35+) Edge-to-Edge: MainActivity memanggil enableEdgeToEdge()
+          # agar tampilan layar penuh konsisten & kompatibel mundur (rekomendasi Play Console).
+          for act in Path("android/app/src/main").rglob("MainActivity.kt"):
+              src = act.read_text()
+              if "enableEdgeToEdge" in src:
+                  continue
+              pkg = re.search(r'^package\s+([\w.]+)', src, re.M)
+              pkg_line = f"package {pkg.group(1)}\n\n" if pkg else ""
+              act.write_text(
+                  pkg_line
+                  + "import android.os.Bundle\n"
+                  + "import android.view.WindowManager\n"
+                  + "import androidx.activity.enableEdgeToEdge\n"
+                  + "import io.flutter.embedding.android.FlutterFragmentActivity\n"
+                  + "import io.flutter.embedding.engine.FlutterEngine\n"
+                  + "import io.flutter.plugin.common.MethodChannel\n\n"
+                  + "class MainActivity : FlutterFragmentActivity() {\n"
+                  + "    override fun onCreate(savedInstanceState: Bundle?) {\n"
+                  + "        enableEdgeToEdge()\n"
+                  + "        super.onCreate(savedInstanceState)\n"
+                  + "    }\n\n"
+                  + "    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {\n"
+                  + "        super.configureFlutterEngine(flutterEngine)\n"
+                  + "        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, \"com.bung.teminapps/security\")\n"
+                  + "            .setMethodCallHandler { call, result ->\n"
+                  + "                if (call.method == \"setSecureScreen\") {\n"
+                  + "                    val enable = call.argument<Boolean>(\"enable\") ?: false\n"
+                  + "                    runOnUiThread {\n"
+                  + "                        if (enable) {\n"
+                  + "                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)\n"
+                  + "                        } else {\n"
+                  + "                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)\n"
+                  + "                        }\n"
+                  + "                    }\n"
+                  + "                    result.success(null)\n"
+                  + "                } else {\n"
+                  + "                    result.notImplemented()\n"
+                  + "                }\n"
+                  + "            }\n"
+                  + "    }\n"
+                  + "}\n"
+              )
+              print(f"✅ Edge-to-Edge diaktifkan di {act}")
+          PY
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Generate Android Launcher Icons
+        run: dart run flutter_launcher_icons
+
+      - name: Static Analysis & Tests
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test
+
+      - name: Build Signed & Obfuscated Release APK & Play Store App Bundle (AAB)
+        env:
+          NUDB_API_KEY: ${{ secrets.NUDB_API_KEY }}
+        run: |
+          flutter build apk --release --obfuscate --split-debug-info=build/debug-info-apk --dart-define=NUDB_API_KEY="${NUDB_API_KEY}"
+          flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info-aab --dart-define=NUDB_API_KEY="${NUDB_API_KEY}"
+
+      - name: Verify Keystore, 16KB ELF Alignment & Prepare Output Files
+        id: meta
+        run: |
+          PUB_VER=$(grep -E '^version:' pubspec.yaml | awk '{print $2}')
+          VER_NAME=${PUB_VER%%+*}
+          VER_CODE=${PUB_VER##*+}
+          if [ "$VER_CODE" = "$PUB_VER" ]; then VER_CODE=1; fi
+
+          OUT_APK="Bungtemin-v${VER_NAME}-code${VER_CODE}-release.apk"
+          OUT_AAB="Bungtemin-v${VER_NAME}-code${VER_CODE}-release.aab"
+
+          cp build/app/outputs/flutter-apk/app-release.apk "$OUT_APK"
+          cp build/app/outputs/bundle/release/app-release.aab "$OUT_AAB"
+
+          echo "=== Keystore Certificate Fingerprint ==="
+          keytool -printcert -jarfile "$OUT_APK" | grep -E "Owner|SHA1|SHA256" || true
+
+          APK_BYTES=$(stat -c%s "$OUT_APK")
+          APK_MB=$(awk "BEGIN {printf \"%.2f\", $APK_BYTES/1048576}")
+          AAB_BYTES=$(stat -c%s "$OUT_AAB")
+          AAB_MB=$(awk "BEGIN {printf \"%.2f\", $AAB_BYTES/1048576}")
+
+          python3 - <<PY
+          import zipfile, struct
+          bad = []
+          with zipfile.ZipFile("$OUT_AAB") as z:
+              for n in [x for x in z.namelist() if x.endswith('.so') and ('arm64-v8a' in x or 'x86_64' in x)]:
+                  d = z.read(n)
+                  e_phoff = struct.unpack('<Q', d[32:40])[0]
+                  e_phentsize, e_phnum = struct.unpack('<HH', d[54:58])
+                  aligns = [struct.unpack('<Q', d[e_phoff+i*e_phentsize+48:e_phoff+i*e_phentsize+56])[0]
+                            for i in range(e_phnum) if struct.unpack('<I', d[e_phoff+i*e_phentsize:e_phoff+i*e_phentsize+4])[0] == 1]
+                  if aligns and min(aligns) < 16384:
+                      bad.append((n, hex(min(aligns))))
+          print("16KB Check failed 64-bit .so count:", len(bad), bad)
+          PY
+
+          echo "version_name=$VER_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VER_CODE" >> $GITHUB_OUTPUT
+          echo "out_apk=$OUT_APK" >> $GITHUB_OUTPUT
+          echo "out_aab=$OUT_AAB" >> $GITHUB_OUTPUT
+          echo "apk_bytes=$APK_BYTES" >> $GITHUB_OUTPUT
+          echo "apk_mb=$APK_MB" >> $GITHUB_OUTPUT
+          echo "aab_mb=$AAB_MB" >> $GITHUB_OUTPUT
+
+      - name: Upload APK & AAB Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bungtemin-v${{ steps.meta.outputs.version_name }}
+          path: |
+            ${{ steps.meta.outputs.out_apk }}
+            ${{ steps.meta.outputs.out_aab }}
+          retention-days: 3
+
+      - name: Auto-Cleanup Old Temp Artifacts
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          repo = os.environ["GITHUB_REPOSITORY"]
+          out = subprocess.check_output(["gh", "api", f"repos/{repo}/actions/artifacts?per_page=100"], text=True)
+          arts = [a for a in json.loads(out).get("artifacts", []) if not a.get("expired")]
+          arts.sort(key=lambda x: x["created_at"], reverse=True)
+          for a in arts[1:]:
+              subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/artifacts/{a['id']}"], check=False)
+          print(f"Auto-cleanup selesai: {max(0, len(arts)-1)} artifact lama dihapus, 1 terbaru dipertahankan.")
+          PY
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.meta.outputs.version_name }}"
+          TITLE="Bungtemin v${{ steps.meta.outputs.version_name }} (Code ${{ steps.meta.outputs.version_code }})"
+          NOTES="Build Signed Android Release Bungtemin v${{ steps.meta.outputs.version_name }} (Code ${{ steps.meta.outputs.version_code }} | App ID: com.bung.teminapps | APK: ${{ steps.meta.outputs.apk_mb }} MB | AAB: ${{ steps.meta.outputs.aab_mb }} MB)"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${{ steps.meta.outputs.out_apk }}" "${{ steps.meta.outputs.out_aab }}" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES"
+          else
+            gh release create "$TAG" "${{ steps.meta.outputs.out_apk }}" "${{ steps.meta.outputs.out_aab }}" \
+              --target "${{ github.sha }}" \
+              --title "$TITLE" \
+              --notes "$NOTES"
+          fi
+
+      - name: Validate Play Store Credentials & Notes
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track != 'none'
+        id: play_prep
+        env:
+          SA_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          RAW_NOTES: ${{ inputs.release_notes }}
+        run: |
+          if [ -z "$SA_JSON" ]; then
+            echo "::error::Secret PLAY_STORE_SERVICE_ACCOUNT_JSON belum diisi di repository tmminunion/bungteminFlutter!"
+            exit 1
+          fi
+
+          if [ -n "$RAW_NOTES" ]; then
+            mkdir -p /tmp/play-whatsnew
+            printf '%s\n' "$RAW_NOTES" > /tmp/play-whatsnew/whatsnew-id
+            echo "has_notes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_notes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish AAB to Google Play Store (with Release Notes)
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track != 'none' && steps.play_prep.outputs.has_notes == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.bung.teminapps
+          releaseFiles: ${{ steps.meta.outputs.out_aab }}
+          tracks: ${{ inputs.play_track }}
+          status: ${{ inputs.play_status }}
+          whatsNewDirectory: /tmp/play-whatsnew
+
+      - name: Publish AAB to Google Play Store
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track != 'none' && steps.play_prep.outputs.has_notes != 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.bung.teminapps
+          releaseFiles: ${{ steps.meta.outputs.out_aab }}
+          tracks: ${{ inputs.play_track }}
+          status: ${{ inputs.play_status }}
+
+      - name: Sync Play Store Version to Bungtemin Promo API
+        if: github.event_name == 'workflow_dispatch' && inputs.play_track == 'production'
+        env:
+          BRIDGE_TOKEN: ${{ secrets.BT_BRIDGE_TOKEN }}
+        run: |
+          curl -fsSL -X POST "https://bungtemin.net/btapi/Promo/sync_play_version" \
+            -H "Content-Type: application/json" \
+            -H "X-Bridge-Token: ${BRIDGE_TOKEN}" \
+            -d "{\"latest_version\":\"${{ steps.meta.outputs.version_name }}\",\"latest_build\":${{ steps.meta.outputs.version_code }}}" || true
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "Telegram secrets not configured, skipping."
+            exit 0
+          fi
+
+          if [ "${{ job.status }}" != "success" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -d chat_id="${CHAT_ID}" \
+              -d parse_mode="HTML" \
+              -d text="❌ <b>Build bungteminFlutter Gagal (${{ job.status }})</b>%0ACommit: <code>${GITHUB_SHA::7}</code>%0A🔗 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            exit 0
+          fi
+
+          PLAY_INFO="📦 Mode: Build Signed APK & AAB"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.play_track }}" != "none" ]; then
+            PLAY_INFO="🚀 Play Store: <b>${{ inputs.play_track }}</b> (status: <code>${{ inputs.play_status }}</code>)"
+          fi
+
+          CAPTION="🦋 <b>Bungtemin Signed APK Build Ready!</b>
+          📦 Versi: <b>v${{ steps.meta.outputs.version_name }} (Code ${{ steps.meta.outputs.version_code }})</b>
+          🆔 App ID: <code>com.bung.teminapps</code>
+          🔑 Key: <code>upload (keystore.jks resmi Play Store)</code>
+          📱 APK: <b>${{ steps.meta.outputs.apk_mb }} MB</b>
+          🛍️ AAB: <b>${{ steps.meta.outputs.aab_mb }} MB</b>
+          ${PLAY_INFO}
+          🔗 <a href='${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}'>Download di GitHub Actions</a>"
+
+          SEND_FILE=""
+          if [ "${{ steps.meta.outputs.apk_bytes }}" -lt 50000000 ]; then
+            SEND_FILE="${{ steps.meta.outputs.out_apk }}"
+          fi
+
+          if [ -n "$SEND_FILE" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@"${SEND_FILE}" \
+              -F caption="${CAPTION}" \
+              -F parse_mode="HTML"
+          else
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -d chat_id="${CHAT_ID}" \
+              -d parse_mode="HTML" \
+              -d text="${CAPTION}"
+          fi
+
+  mobsf-scan:
+    name: Security Scan APK (MobSF)
+    needs: build-flutter
+    # Hanya saat rilis ke Play Store (workflow_dispatch dengan play_track != none)
+    if: needs.build-flutter.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.play_track != 'none'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # hasil scan tidak menggagalkan rilis; lihat Summary & artifact
+
+    env:
+      MOBSF_API_KEY: ci-mobsf-${{ github.run_id }}
+      MOBSF_URL: http://localhost:8000
+      # Isi angka 1-100 untuk menggagalkan job bila security score di bawah ambang (0 = nonaktif)
+      MOBSF_FAIL_BELOW: '0'
+
+    steps:
+      - name: Download APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Bungtemin-v${{ needs.build-flutter.outputs.version_name }}
+          path: apk
+
+      - name: Start MobSF (Docker)
+        run: |
+          docker run -d --name mobsf -p 8000:8000 \
+            -e MOBSF_API_KEY="$MOBSF_API_KEY" \
+            opensecurity/mobile-security-framework-mobsf:latest
+          for i in $(seq 1 60); do
+            if curl -fs -o /dev/null "$MOBSF_URL/"; then echo "MobSF siap (${i}x cek)"; break; fi
+            sleep 5
+          done
+          curl -fs -o /dev/null "$MOBSF_URL/" || { docker logs mobsf | tail -50; echo "::error::MobSF tidak siap"; exit 1; }
+
+      - name: Upload & Scan APK
+        env:
+          APK_NAME: ${{ needs.build-flutter.outputs.out_apk }}
+        run: |
+          UP=$(curl -fs -F "file=@apk/${APK_NAME}" -H "Authorization: $MOBSF_API_KEY" "$MOBSF_URL/api/v1/upload")
+          HASH=$(echo "$UP" | python3 -c 'import sys,json; print(json.load(sys.stdin)["hash"])')
+          echo "HASH=$HASH" >> "$GITHUB_ENV"
+          echo "MD5/SHA256 APK: $HASH"
+
+          curl -fs -X POST "$MOBSF_URL/api/v1/scan" \
+            -H "Authorization: $MOBSF_API_KEY" \
+            --data-urlencode "hash=$HASH" \
+            --data-urlencode "scan_type=apk" \
+            --data-urlencode "file_name=$APK_NAME" \
+            -o /dev/null --max-time 1500
+
+          mkdir -p mobsf-report
+          curl -fs -X POST "$MOBSF_URL/api/v1/report_json" \
+            -H "Authorization: $MOBSF_API_KEY" --data "hash=$HASH" \
+            -o mobsf-report/mobsf-report.json
+          curl -fs -X POST "$MOBSF_URL/api/v1/download_pdf" \
+            -H "Authorization: $MOBSF_API_KEY" --data "hash=$HASH" \
+            -o mobsf-report/mobsf-report.pdf || echo "PDF tidak tersedia, lewati."
+
+      - name: Summarize Report
+        id: summary
+        run: |
+          python3 - <<'PY'
+          import json, os
+          r = json.load(open("mobsf-report/mobsf-report.json"))
+          app = r.get("appsec") or {}
+          score = app.get("security_score", r.get("security_score"))
+          def n(k):
+              v = app.get(k)
+              return len(v) if isinstance(v, list) else 0
+          high, warn, info, secure = n("high"), n("warning"), n("info"), n("secure")
+          perms = r.get("permissions") or {}
+          dangerous = sum(1 for p in perms.values() if isinstance(p, dict) and p.get("status") == "dangerous")
+          trackers = (r.get("trackers") or {}).get("detected_trackers", "-")
+          lines = [
+              "## MobSF Security Scan",
+              f"- APK: `{r.get('file_name', '-')}`  (v{r.get('version_name', '-')})",
+              f"- Security score: **{score}/100**",
+              f"- Temuan: High **{high}**, Warning **{warn}**, Info **{info}**, Secure **{secure}**",
+              f"- Permission berbahaya: **{dangerous}** dari {len(perms)}",
+              f"- Tracker terdeteksi: **{trackers}**",
+              "",
+          ]
+          for sev, key in (("High", "high"), ("Warning", "warning")):
+              items = app.get(key) or []
+              if items:
+                  lines.append(f"### {sev}")
+                  for it in items[:15]:
+                      lines.append(f"- {it.get('title', it) if isinstance(it, dict) else it}")
+                  lines.append("")
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(lines) + "\n")
+          out = open(os.environ["GITHUB_OUTPUT"], "a")
+          out.write(f"score={score}\nhigh={high}\nwarning={warn}\n")
+          PY
+
+      - name: Upload MobSF Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobSF-report-v${{ needs.build-flutter.outputs.version_name }}
+          path: mobsf-report/
+          retention-days: 3
+
+      - name: Enforce Minimum Score
+        if: env.MOBSF_FAIL_BELOW != '0'
+        run: |
+          SCORE="${{ steps.summary.outputs.score }}"
+          if [ -n "$SCORE" ] && [ "$SCORE" -lt "$MOBSF_FAIL_BELOW" ]; then
+            echo "::error::Security score $SCORE di bawah ambang $MOBSF_FAIL_BELOW"
+            exit 1
+          fi
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then exit 0; fi
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d parse_mode="HTML" \
+            -d text="🛡️ <b>MobSF Scan v${{ needs.build-flutter.outputs.version_name }}</b> (${{ job.status }})%0AScore: <b>${{ steps.summary.outputs.score }}/100</b> • High: ${{ steps.summary.outputs.high }} • Warning: ${{ steps.summary.outputs.warning }}%0A🔗 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" || true
+
+  security-scan:
+    name: Secret & Dependency Scan (gitleaks + OSV)
+    needs: build-flutter
+    # Hanya saat rilis ke Play Store (workflow_dispatch dengan play_track != none)
+    if: needs.build-flutter.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.play_track != 'none'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # non-blocking; lihat Summary & artifact
+
+    steps:
+      - name: Checkout Repository (riwayat penuh)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter (untuk pubspec.lock)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Resolve Dependencies
+        run: flutter pub get
+
+      - name: Install gitleaks & osv-scanner (CLI, gratis)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz gitleaks
+          curl -sSL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v1.9.2/osv-scanner_linux_amd64
+          chmod +x gitleaks osv-scanner
+          ./gitleaks version
+          ./osv-scanner --version
+
+      - name: Run gitleaks (secret di source & riwayat git)
+        run: |
+          mkdir -p sec-report
+          # --redact: nilai secret tidak ditulis ke laporan
+          ./gitleaks detect --source . --redact --no-banner \
+            --report-format json --report-path sec-report/gitleaks.json --exit-code 0
+
+      - name: Run OSV-Scanner (kerentanan dependensi pubspec.lock)
+        run: |
+          ./osv-scanner --lockfile=pubspec.lock --format json --output sec-report/osv.json || true
+
+      - name: Summarize
+        run: |
+          python3 - <<'PY'
+          import json, os, collections
+          out = ["## Secret & Dependency Scan", ""]
+          try:
+              leaks = json.load(open("sec-report/gitleaks.json")) or []
+          except Exception:
+              leaks = []
+          by_rule = collections.Counter(l.get("RuleID", "?") for l in leaks)
+          out.append(f"### gitleaks: **{len(leaks)}** temuan")
+          for rule, n in by_rule.most_common(10):
+              files = sorted({l.get("File", "?") for l in leaks if l.get("RuleID") == rule})[:3]
+              out.append(f"- `{rule}` x{n} (mis. {', '.join(files)})")
+          out.append("")
+          try:
+              osv = json.load(open("sec-report/osv.json"))
+          except Exception:
+              osv = {}
+          vulns = []
+          for res in osv.get("results", []):
+              for pkg in res.get("packages", []):
+                  name = pkg.get("package", {}).get("name", "?")
+                  ver = pkg.get("package", {}).get("version", "?")
+                  for v in pkg.get("vulnerabilities", []):
+                      vulns.append((name, ver, v.get("id", "?"), (v.get("summary") or "")[:80]))
+          out.append(f"### OSV-Scanner: **{len(vulns)}** kerentanan dependensi")
+          for name, ver, vid, summ in vulns[:20]:
+              out.append(f"- `{name}` {ver}: {vid} {summ}")
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(out) + "\n")
+          PY
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Security-scan-report
+          path: sec-report/
+          retention-days: 3

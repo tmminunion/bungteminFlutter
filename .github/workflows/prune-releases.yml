@@ -1,0 +1,51 @@
+name: Prune Old GitHub Releases
+
+# Menjaga halaman Releases hanya berisi SATU rilis: yang terbaru.
+# - Otomatis berjalan setelah "Build Flutter Android APK & AAB" selesai SUKSES.
+#   (Build yang gagal / dibatalkan tidak menghapus apa pun, jadi rilis lama aman.)
+# - Bisa dijalankan manual lewat tab Actions > Prune Old GitHub Releases > Run workflow.
+
+on:
+  workflow_run:
+    workflows: ["Build Flutter Android APK & AAB"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prune-releases
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Keep only the latest release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Delete all releases (and tags) except the newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[].tagName' > tags.txt
+
+          KEEP="$(head -n 1 tags.txt || true)"
+          if [ -z "$KEEP" ]; then
+            echo "Tidak ada rilis di repositori ini."
+            exit 0
+          fi
+          echo "Rilis terbaru dipertahankan: $KEEP"
+
+          COUNT=0
+          while read -r TAG; do
+            [ -z "$TAG" ] && continue
+            echo "Menghapus rilis lama: $TAG"
+            gh release delete "$TAG" --cleanup-tag --yes
+            COUNT=$((COUNT + 1))
+          done < <(tail -n +2 tags.txt)
+
+          echo "Selesai: $COUNT rilis lama dihapus, 1 rilis terbaru ($KEEP) dipertahankan."
