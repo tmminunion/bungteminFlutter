@@ -62,7 +62,14 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
 
   String _plainPreview(String raw) {
     return raw
+        .replaceAll(
+          RegExp(r'<(head|style|script)\b[^>]*>[\s\S]*?</\1>', caseSensitive: false),
+          ' ',
+        )
+        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), ' ')
         .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'&nbsp;|&#160;', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'&amp;', caseSensitive: false), '&')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
@@ -294,9 +301,30 @@ class _BroadcastInboxDetailScreenState
 
   bool _looksLikeHtml(String s) {
     return RegExp(
-      r'<(div|p|br|table|tr|td|h[1-6]|ul|ol|li|img|strong|b|em|a|span|section|header)\b',
+      r'<(!doctype|html|head|body|div|p|br|table|tr|td|h[1-6]|ul|ol|li|img|strong|b|em|a|span|section|header)\b',
       caseSensitive: false,
     ).hasMatch(s);
+  }
+
+  /// Ekstrak konten dalam <body> dan bersihkan <head>/<style>/MSO comment
+  /// agar dokumen HTML penuh dari Mail Studio / BEE ter-render bersih oleh HtmlWidget.
+  String _prepareHtmlForWidget(String raw) {
+    var html = raw;
+    final bodyMatch = RegExp(
+      r'<body\b[^>]*>([\s\S]*?)</body>',
+      caseSensitive: false,
+    ).firstMatch(html);
+    if (bodyMatch != null) {
+      html = bodyMatch.group(1) ?? html;
+    }
+    html = html
+        .replaceAll(
+          RegExp(r'<(head|style|script|meta|title)\b[^>]*>[\s\S]*?</\1>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(RegExp(r'<!doctype[^>]*>', caseSensitive: false), '')
+        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), '');
+    return html.trim();
   }
 
   bool _isImageUrl(String url) {
@@ -494,7 +522,7 @@ class _BroadcastInboxDetailScreenState
                         : const EdgeInsets.fromLTRB(18, 18, 18, 20),
                     child: isHtml
                         ? HtmlWidget(
-                            item.body,
+                            _prepareHtmlForWidget(item.body),
                             onTapUrl: (url) {
                               _openUrl(url);
                               return true;
