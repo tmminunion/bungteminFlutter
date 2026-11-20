@@ -227,6 +227,23 @@ class BungteminApi {
     }
   }
 
+  Future<({bool waOnline, String message})> fetchWaOtpStatus() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_baseUrl/btapi/User/wa_otp_status'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          final online = decoded['wa_online'] != false;
+          final msg = (decoded['message'] ?? '').toString();
+          return (waOnline: online, message: msg);
+        }
+      }
+    } catch (_) {}
+    return (waOnline: true, message: '');
+  }
+
   Future<String> requestOtpWa({required String noreg}) async {
     final cleanNoreg = SessionStore.formatNoreg8(noreg);
     final uid = await SessionStore().getOrCreateUidFallback();

@@ -43,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (widget.initialSsoEnabled == null) {
       _loadSsoConfig();
     }
+    _checkWaOtpStatus();
   }
 
   @override
@@ -52,6 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
         widget.initialSsoEnabled != null) {
       _ssoEnabled = widget.initialSsoEnabled!;
     }
+  }
+
+  Future<void> _checkWaOtpStatus() async {
+    final st = await _api.fetchWaOtpStatus();
+    if (!mounted || st.waOnline) return;
+    setState(() {
+      _errorText = st.message.isNotEmpty
+          ? st.message
+          : 'Bot WhatsApp OTP sedang offline. OTP dialihkan ke Email (jika terdaftar) atau login pakai Kata Sandi / Microsoft SSO.';
+    });
   }
 
   Future<void> _loadSsoConfig() async {
