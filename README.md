@@ -16,3 +16,6 @@ Eksperimen aplikasi mobile **PUK SP LEM SPSI PT. TMMIN** menggunakan **Flutter (
 1. **SharePoint (`bungtemin.net`)** — Akses langsung dokumen & media SharePoint TMMIN.
 2. **NUDB (`https://nudb.bungtemin.net`) → SharePoint & Google Drive Bungtemin** — `/api/ubdrive/*` (SharePoint) dan `/api/gdrive/*` + `/gdrive/file/:id` (upload & streaming video Reels/Story besar dengan HTTP Range via OAuth2 `bungtemin@gmail.com`).
 3. **Dev Imageproxy (`https://dev.bungtemin.net`) → Google Drive Bungtemin** — Proxy gambar cepat dengan Vercel Edge CDN Cache 1 tahun (`immutable`), resize/thumbnail/WebP on-the-fly (`/api/drive/:id`, `/api/drive/upload`, `/api/drive/list`, `/api/bingkai`, `/api/drive/health`) via OAuth2 `bungtemin@gmail.com` (folder `Bungtemin/images` & `Bungtemin/bingkai`).
+
+## Lisensi
+Kode boleh **dilihat**, tetapi **tidak boleh dipakai ulang** (source-available, all rights reserved). Lihat [LICENSE](LICENSE).
