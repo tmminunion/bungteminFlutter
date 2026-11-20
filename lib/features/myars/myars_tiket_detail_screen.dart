@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/myars_models.dart';
 import '../../services/myars_service.dart';
 import 'myars_widgets.dart';
+import '../../core/net/btapi_auth.dart';
 
 /// E-Pass Kehadiran (`/aplikasi/absensi/tiketdetail/:noreg/:id`).
 /// Menyalin logika `TiketdetailPage` (`bungteminAPP`):
@@ -216,6 +217,7 @@ class _BoardingPassCard extends StatelessWidget {
                         child: participant.avatarUrl.isNotEmpty
                             ? Image.network(
                                 participant.avatarUrl,
+        headers: BtapiAuth.imageHeaders(participant.avatarUrl),
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Image.asset(
                                   'assets/img/default-avatar.png',

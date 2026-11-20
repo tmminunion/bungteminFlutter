@@ -45,6 +45,7 @@ import '../bubabe/bubabe_screen.dart';
 import '../scanner/scanner_screen.dart';
 import '../struktur/struktur_screen.dart';
 import '../tonton/tonton_screen.dart';
+import '../../core/net/btapi_auth.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -1344,6 +1345,7 @@ class _BungteminDrawer extends StatelessWidget {
                         color: Colors.white24,
                         child: Image.network(
                           session!.avatarUrl,
+        headers: BtapiAuth.imageHeaders(session!.avatarUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Image.asset(
                             'assets/img/default-avatar.png',

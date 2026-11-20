@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'net/api_cache_store.dart';
+import 'net/btapi_auth.dart';
 
 class UserSession {
   const UserSession({
@@ -107,11 +108,13 @@ class SessionStore {
     final prefs = await SharedPreferences.getInstance();
     final noreg = prefs.getString(_kNoreg) ?? '';
     if (noreg.isEmpty) return null;
+    final storedToken = prefs.getString(_kToken) ?? '';
+    BtapiAuth.setToken(storedToken);
     return UserSession(
       noreg: noreg,
       nama: prefs.getString(_kNama) ?? 'Anggota',
       job: prefs.getString(_kJob) ?? 'ANGGOTA',
-      token: prefs.getString(_kToken) ?? '',
+      token: storedToken,
       userId: prefs.getInt(_kUserId) ?? 1,
       komisi: prefs.getString(_kKomisi) ?? '',
       divisi: prefs.getString(_kDivisi) ?? '',
@@ -124,6 +127,7 @@ class SessionStore {
     await prefs.setString(_kNama, session.nama);
     await prefs.setString(_kJob, session.job);
     await prefs.setString(_kToken, session.token);
+    BtapiAuth.setToken(session.token);
     await prefs.setInt(_kUserId, session.userId);
     await prefs.setString(_kKomisi, session.komisi);
     await prefs.setString(_kDivisi, session.divisi);
@@ -135,6 +139,7 @@ class SessionStore {
     await prefs.remove(_kNama);
     await prefs.remove(_kJob);
     await prefs.remove(_kToken);
+    BtapiAuth.clear();
     await prefs.remove(_kUserId);
     await prefs.remove(_kKomisi);
     await prefs.remove(_kDivisi);

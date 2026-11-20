@@ -7,6 +7,7 @@ import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/kta_member.dart';
 import '../../services/bungtemin_api.dart';
+import '../../core/net/btapi_auth.dart';
 
 class KtaTab extends StatefulWidget {
   const KtaTab({
@@ -452,6 +453,7 @@ class _KtaTabState extends State<KtaTab> with SingleTickerProviderStateMixin {
             child: ClipOval(
               child: Image.network(
                 m.avatarUrl,
+        headers: BtapiAuth.imageHeaders(m.avatarUrl),
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Image.asset(
                   'assets/card/character.png',

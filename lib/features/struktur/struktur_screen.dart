@@ -5,6 +5,7 @@ import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/struktur_item.dart';
 import '../../services/bungtemin_api.dart';
+import '../../core/net/btapi_auth.dart';
 
 class StrukturScreen extends StatefulWidget {
   const StrukturScreen({
@@ -754,6 +755,7 @@ class _StrukturMemberCard extends StatelessWidget {
                         child: member.image.isNotEmpty
                             ? Image.network(
                                 member.image,
+        headers: BtapiAuth.imageHeaders(member.image),
                                 fit: BoxFit.cover,
                                 alignment: Alignment.topCenter,
                                 errorBuilder: (_, __, ___) => Image.asset(

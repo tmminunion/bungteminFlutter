@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import '../core/net/cached_http.dart' as http;
 
+import '../core/net/btapi_auth.dart';
 import '../core/session_store.dart';
 import '../models/bungtemin_menu.dart';
 import '../models/kta_member.dart';
@@ -1357,7 +1358,10 @@ class BungteminApi {
 
   Future<TrainingPageResponse> fetchTrainings({int page = 1}) async {
     final res = await http
-        .get(Uri.parse('$_baseUrl/btapi/training/all?page=$page'))
+        .get(
+          Uri.parse('$_baseUrl/btapi/training/all?page=$page'),
+          headers: BtapiAuth.headers(),
+        )
         .timeout(_timeout);
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
@@ -1403,7 +1407,10 @@ class BungteminApi {
       final res = await http
           .post(
             Uri.parse('$_baseUrl/btapi/training/getAllByNoreg'),
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              ...BtapiAuth.headers(),
+            },
             body: jsonEncode({'user_noreg': cleanNoreg}),
           )
           .timeout(_timeout);

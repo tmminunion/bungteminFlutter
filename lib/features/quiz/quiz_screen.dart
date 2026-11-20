@@ -6,6 +6,7 @@ import '../../core/net/cached_http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
+import '../../core/net/btapi_auth.dart';
 
 class QuizItem {
   final String id;
@@ -431,6 +432,7 @@ class _QuizLobbyScreenState extends State<QuizLobbyScreen> {
                                               child: item.imageUrl.isNotEmpty
                                                   ? Image.network(
                                                       item.imageUrl,
+        headers: BtapiAuth.imageHeaders(item.imageUrl),
                                                       fit: BoxFit.cover,
                                                       errorBuilder:
                                                           (_, __, ___) =>

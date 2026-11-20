@@ -10,6 +10,7 @@ import '../../models/meeting_item.dart';
 import '../../services/bungtemin_api.dart';
 import '../../services/fcm_service.dart';
 import '../feed/tabfeed_screen.dart';
+import '../../core/net/btapi_auth.dart';
 
 const String _chatBaseUrl = 'https://bungtemin.net/btapi/Chat';
 
@@ -384,6 +385,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                   constraints: const BoxConstraints(maxHeight: 360),
                   child: Image.network(
                     story.mediaUrl,
+        headers: BtapiAuth.imageHeaders(story.mediaUrl),
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Padding(
                       padding: EdgeInsets.all(24),
@@ -677,6 +679,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                                 child: st.mediaUrl.isNotEmpty
                                     ? Image.network(
                                         st.mediaUrl,
+        headers: BtapiAuth.imageHeaders(st.mediaUrl),
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => Center(
                                           child: Text(

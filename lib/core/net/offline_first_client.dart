@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_cache_store.dart';
+import 'btapi_auth.dart';
 
 /// HTTP client "local-first" berbasis SQLite.
 ///
@@ -130,6 +131,12 @@ class OfflineFirstClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // Endpoint BTAPI kini wajib login: sisipkan token sesi bila belum ada.
+    final hasAuth =
+        request.headers.keys.any((k) => k.toLowerCase() == 'authorization');
+    if (!hasAuth && BtapiAuth.isBtapiUrl(request.url.toString())) {
+      request.headers.addAll(BtapiAuth.headers());
+    }
     if (!_isCacheable(request)) {
       return _sendTracked(request);
     }

@@ -4,6 +4,7 @@ import '../../models/myars_models.dart';
 import '../../services/myars_service.dart';
 import 'myars_tiket_detail_screen.dart';
 import 'myars_widgets.dart';
+import '../../core/net/btapi_auth.dart';
 
 /// Detail Absensi Event (`/aplikasi/absensi/absensidetail/:id`).
 /// Menyalin logika `AbsensidetailPage` (`bungteminAPP`):
@@ -374,6 +375,7 @@ class _PesertaCard extends StatelessWidget {
                   child: item.avatarUrl.isNotEmpty
                       ? Image.network(
                           item.avatarUrl,
+        headers: BtapiAuth.imageHeaders(item.avatarUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Image.asset(
                             'assets/img/default-avatar.png',

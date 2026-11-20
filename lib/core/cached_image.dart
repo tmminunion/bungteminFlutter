@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'net/btapi_auth.dart';
 
 /// Disk cache manager khusus video Reels Bungtemin.
 class BungteminReelCache {
@@ -86,6 +87,7 @@ class BungteminCachedImage extends StatelessWidget {
 
     return Image.network(
       url,
+        headers: BtapiAuth.imageHeaders(url),
       fit: fit,
       width: width,
       height: height,

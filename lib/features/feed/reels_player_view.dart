@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/cached_image.dart';
 import '../../core/session_store.dart';
 import '../../services/bungtemin_api.dart';
+import '../../core/net/btapi_auth.dart';
 
 class ReelsPlayerView extends StatefulWidget {
   const ReelsPlayerView({
@@ -422,6 +423,7 @@ class _ReelPageItemState extends State<_ReelPageItem> {
           if (_mediaType == 'image' && _mediaUrl.isNotEmpty)
             Image.network(
               _mediaUrl,
+        headers: BtapiAuth.imageHeaders(_mediaUrl),
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const Center(
                 child: Icon(
@@ -449,6 +451,7 @@ class _ReelPageItemState extends State<_ReelPageItem> {
             if (_thumbUrl.isNotEmpty)
               Image.network(
                 _thumbUrl,
+        headers: BtapiAuth.imageHeaders(_thumbUrl),
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
@@ -658,6 +661,7 @@ class _ReelPageItemState extends State<_ReelPageItem> {
                           child: avatarUrl.isNotEmpty
                               ? Image.network(
                                   avatarUrl,
+        headers: BtapiAuth.imageHeaders(avatarUrl),
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => const ColoredBox(
                                     color: Color(0xFF1E293B),

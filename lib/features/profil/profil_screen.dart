@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../models/kta_member.dart';
 import '../../services/bungtemin_api.dart';
 import '../kta/kta_tab.dart';
+import '../../core/net/btapi_auth.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({
@@ -507,6 +508,7 @@ class _ProfilHeroHeader extends StatelessWidget {
                           color: const Color(0xFF1E293B),
                           child: Image.network(
                             avatarUrl,
+        headers: BtapiAuth.imageHeaders(avatarUrl),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Image.asset(
                               'assets/img/default-avatar.png',
