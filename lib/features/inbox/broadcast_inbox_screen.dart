@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/app_colors.dart';
+import '../../core/theme.dart';
 import '../../services/inbox_service.dart';
 
 class BroadcastInboxScreen extends StatefulWidget {

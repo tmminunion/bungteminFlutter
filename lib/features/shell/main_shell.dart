@@ -850,15 +850,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return;
     }
     if (route.startsWith('/inbox')) {
-      if (_session == null) {
-        _openLogin();
-        return;
+      void openInbox() {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const BroadcastInboxScreen(),
+          ),
+        );
       }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const BroadcastInboxScreen(),
-        ),
-      );
+      if (_session == null) {
+        _requireLogin('Silakan login untuk membuka Kotak Masuk.', openInbox);
+      } else {
+        openInbox();
+      }
       return;
     }
     if (route.startsWith('/tabfeed') || route.startsWith('/feed')) {
