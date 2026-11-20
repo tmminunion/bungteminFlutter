@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import '../core/net/cached_http.dart' as http;
 
+import '../core/net/app_login_proof.dart';
 import '../core/net/btapi_auth.dart';
 import '../core/session_store.dart';
 import '../models/bungtemin_menu.dart';
@@ -35,10 +36,17 @@ class BungteminApi {
   }) async {
     final cleanNoreg = SessionStore.formatNoreg8(noreg);
     final uid = await SessionStore().getOrCreateUidFallback();
+    final proof = AppLoginProof.buildHeader(noreg: cleanNoreg, uid: uid);
+    final loginUrl = proof != null
+        ? '$_baseUrl/btapi/loginapk'
+        : '$_baseUrl/btapi/User/login/';
     final res = await http
         .post(
-          Uri.parse('$_baseUrl/btapi/User/login/'),
-          headers: {'Content-Type': 'application/json'},
+          Uri.parse(loginUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            if (proof != null) 'api-key': proof,
+          },
           body: jsonEncode({
             'id': cleanNoreg,
             'noreg': cleanNoreg,
