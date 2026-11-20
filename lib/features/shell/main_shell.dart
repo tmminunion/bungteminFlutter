@@ -15,6 +15,7 @@ import '../about/feedback_screen.dart';
 import '../auth/login_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../chat/chat_inbox_screen.dart';
+import '../inbox/broadcast_inbox_screen.dart';
 import '../feed/tabfeed_screen.dart';
 import '../home/home_tab.dart';
 import '../kta/kta_tab.dart';
@@ -846,6 +847,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
         rawRoute.split('/').where((s) => s.trim().isNotEmpty).toList();
     if (route.startsWith('/news')) {
       _openNews(segment: 0);
+      return;
+    }
+    if (route.startsWith('/inbox')) {
+      if (_session == null) {
+        _openLogin();
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const BroadcastInboxScreen(),
+        ),
+      );
       return;
     }
     if (route.startsWith('/tabfeed') || route.startsWith('/feed')) {

@@ -11,6 +11,7 @@ import '../../services/bungtemin_api.dart';
 import '../../services/fcm_service.dart';
 import '../feed/tabfeed_screen.dart';
 import '../../core/net/btapi_auth.dart';
+import '../inbox/broadcast_inbox_screen.dart';
 
 const String _chatBaseUrl = 'https://bungtemin.net/btapi/Chat';
 
@@ -450,6 +451,17 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
           ),
           centerTitle: false,
           actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BroadcastInboxScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.mark_email_unread_rounded),
+              tooltip: 'Kotak Masuk Broadcast',
+            ),
             IconButton(
               onPressed: _loadAll,
               icon: const Icon(Icons.refresh_rounded),
