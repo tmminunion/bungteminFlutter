@@ -912,7 +912,10 @@ class BungteminApi {
   Future<List<BungteminMenuItem>> fetchMenus() async {
     try {
       final ctrlRes = await http
-          .get(Uri.parse('$_baseUrl/btapi/Menu/list'))
+          .get(
+            Uri.parse('$_baseUrl/btapi/Menu/list'),
+            headers: BtapiAuth.headers(),
+          )
           .timeout(const Duration(seconds: 8));
       if (ctrlRes.statusCode == 200) {
         final parsed = parseMenuJson(ctrlRes.body);

@@ -484,7 +484,7 @@ class FcmService {
       await http
           .post(
             Uri.parse('https://bungtemin.net/btapi/Chat/send'),
-            headers: const {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', ...BtapiAuth.headers()},
             body: jsonEncode({
               'room_id': roomId,
               'sender_noreg': self8,

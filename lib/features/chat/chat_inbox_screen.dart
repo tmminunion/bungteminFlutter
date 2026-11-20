@@ -192,7 +192,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
     try {
       final noreg = _norm8(widget.session.noreg);
       final res = await http
-          .get(Uri.parse('$_chatBaseUrl/inbox?noreg=$noreg'))
+          .get(Uri.parse('$_chatBaseUrl/inbox?noreg=$noreg'), headers: BtapiAuth.headers())
           .timeout(const Duration(seconds: 12));
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200 && body['success'] == true) {
@@ -236,7 +236,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
     try {
       final noreg = _norm8(widget.session.noreg);
       final res = await http
-          .get(Uri.parse('$_chatBaseUrl/online?noreg=$noreg'))
+          .get(Uri.parse('$_chatBaseUrl/online?noreg=$noreg'), headers: BtapiAuth.headers())
           .timeout(const Duration(seconds: 10));
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200 && body['success'] == true) {
@@ -1001,7 +1001,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
       final uri = Uri.parse(
         '$_chatBaseUrl/members?noreg=$self8&q=${Uri.encodeQueryComponent(q.trim())}',
       );
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final res = await http.get(uri, headers: BtapiAuth.headers()).timeout(const Duration(seconds: 10));
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200 && body['success'] == true) {
         final list = (body['data'] as List<dynamic>? ?? [])
@@ -1216,7 +1216,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       final uri = Uri.parse(
         '$_chatBaseUrl/messages?room_id=${Uri.encodeQueryComponent(widget.roomId)}&noreg=$self8&after_id=$afterId',
       );
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final res = await http.get(uri, headers: BtapiAuth.headers()).timeout(const Duration(seconds: 10));
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200 && body['success'] == true) {
         final incoming = (body['data'] as List<dynamic>? ?? [])
@@ -1267,7 +1267,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         final res = await http
             .post(
               Uri.parse('$_chatBaseUrl/ask_baim'),
-              headers: {'Content-Type': 'application/json'},
+              headers: {'Content-Type': 'application/json', ...BtapiAuth.headers()},
               body: jsonEncode({
                 'noreg': self8,
                 'nama': widget.session.nama,
@@ -1295,7 +1295,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         final res = await http
             .post(
               Uri.parse('$_chatBaseUrl/send'),
-              headers: {'Content-Type': 'application/json'},
+              headers: {'Content-Type': 'application/json', ...BtapiAuth.headers()},
               body: jsonEncode({
                 'room_id': widget.roomId,
                 'sender_noreg': self8,
