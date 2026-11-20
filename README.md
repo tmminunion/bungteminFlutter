@@ -1,21 +1,16 @@
 # bungteminFlutter
 
-Eksperimen aplikasi mobile **PUK SP LEM SPSI PT. TMMIN** menggunakan **Flutter (Material 3)** — dikembangkan di Termux dan dibangun otomatis di **GitHub Actions** (APK + Play Store AAB 16 KB aligned).
+Aplikasi mobile resmi **PUK SP LEM SPSI PT. TMMIN** berbasis **Flutter (Material 3)** — dibangun dan dirilis secara otomatis melalui **GitHub Actions** (APK & Play Store AAB).
 
-## Fitur Awal
-- **Login & Mode Preview Noreg** (`btapi/User/login/`, `Idcard/api/me`, `Idcard/api/member/...`)
-- **Beranda** (Ringkasan statistik meeting + feed Stories dari `btapi/Media/stories`)
-- **KTA Digital 3D Flip** (Animasi flip native 60–120fps, normalisasi jabatan `KP`/`PLENO`/`PUK`/`ANGGOTA`, modal QR presensi `qr_flutter`)
-- **Agenda Meeting** (`btapi/Meeting/index` dengan filter kategori & detail sheet)
+## Fitur Utama
+- **Autentikasi & KTA Digital 3D:** Login anggota, kartu tanda anggota digital interaktif, dan QR presensi.
+- **Beranda & Feed:** Ringkasan agenda, berita organisasi, Stories, dan Reels video.
+- **Agenda Meeting & Absensi:** Daftar agenda rapat, detail kegiatan, serta tiket dan riwayat presensi.
+- **Layanan & Komunikasi:** Struktur organisasi, jadwal kalender kerja, survei anggota, notifikasi push, dan kanal informasi pengurus.
 
-## Alur Kerja
-1. Edit kode di Termux (`/data/data/com.termux/files/home/bungteminFlutter`) — tanpa build lokal.
-2. `git push origin main` untuk menjalankan `flutter analyze`, `flutter test`, `flutter build apk --release`, `flutter build appbundle --release`, publish GitHub Release, dan mengirim APK ke Telegram.
-
-## 3 Jalur Media & Penyimpanan
-1. **SharePoint (`bungtemin.net`)** — Akses langsung dokumen & media SharePoint TMMIN.
-2. **NUDB (`https://nudb.bungtemin.net`) → SharePoint & Google Drive Bungtemin** — `/api/ubdrive/*` (SharePoint) dan `/api/gdrive/*` + `/gdrive/file/:id` (upload & streaming video Reels/Story besar dengan HTTP Range via OAuth2 `bungtemin@gmail.com`).
-3. **Dev Imageproxy (`https://dev.bungtemin.net`) → Google Drive Bungtemin** — Proxy gambar cepat dengan Vercel Edge CDN Cache 1 tahun (`immutable`), resize/thumbnail/WebP on-the-fly (`/api/drive/:id`, `/api/drive/upload`, `/api/drive/list`, `/api/bingkai`, `/api/drive/health`) via OAuth2 `bungtemin@gmail.com` (folder `Bungtemin/images` & `Bungtemin/bingkai`).
+## Build & Rilis CI/CD
+- Seluruh proses analisis statis (`flutter analyze`), pengujian (`flutter test`), serta build APK dan App Bundle (`.aab`) dijalankan otomatis di **GitHub Actions**.
+- Konfigurasi sensitif dan kredensial rilis dikelola sepenuhnya melalui **GitHub Secrets**.
 
 ## Lisensi
 Kode boleh **dilihat**, tetapi **tidak boleh dipakai ulang** (source-available, all rights reserved). Lihat [LICENSE](LICENSE).
