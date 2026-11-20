@@ -603,6 +603,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  void _openInbox() {
+    _withLogin(
+      'Masuk terlebih dahulu untuk membuka Kotak Masuk Broadcast.',
+      (_) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const BroadcastInboxScreen(),
+        ),
+      ),
+    );
+  }
+
   void _openContact() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -1245,6 +1256,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
           Navigator.of(context).pop();
           _openChat();
         },
+        onOpenInbox: () {
+          Navigator.of(context).pop();
+          _openInbox();
+        },
         onOpenProfil: () {
           Navigator.of(context).pop();
           _openProfil();
@@ -1302,6 +1317,7 @@ class _BungteminDrawer extends StatelessWidget {
     required this.onOpenKta,
     required this.onOpenScanner,
     required this.onOpenChat,
+    required this.onOpenInbox,
     required this.onOpenProfil,
     required this.onOpenAccountSettings,
     required this.onOpenAppSettings,
@@ -1317,6 +1333,7 @@ class _BungteminDrawer extends StatelessWidget {
   final VoidCallback onOpenKta;
   final VoidCallback onOpenScanner;
   final VoidCallback onOpenChat;
+  final VoidCallback onOpenInbox;
   final VoidCallback onOpenProfil;
   final VoidCallback onOpenAccountSettings;
   final VoidCallback onOpenAppSettings;
@@ -1464,6 +1481,17 @@ class _BungteminDrawer extends StatelessWidget {
                   selected: false,
                   locked: !loggedIn,
                   onTap: onOpenChat,
+                ),
+                _DrawerTile(
+                  iconAsset: 'assets/icon/1.png',
+                  iconData: Icons.mark_email_unread_rounded,
+                  title: 'Kotak Masuk Broadcast',
+                  subtitle: loggedIn
+                      ? 'Pengumuman, PDF, konfirmasi & form'
+                      : 'Butuh login anggota',
+                  selected: false,
+                  locked: !loggedIn,
+                  onTap: onOpenInbox,
                 ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(12, 14, 12, 4),
