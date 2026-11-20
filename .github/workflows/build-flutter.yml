@@ -433,11 +433,11 @@ jobs:
       - name: Sync Play Store Version to Bungtemin Promo API
         if: github.event_name == 'workflow_dispatch' && inputs.play_track == 'production'
         env:
-          BRIDGE_TOKEN: ${{ secrets.BT_BRIDGE_TOKEN }}
+          PROMO_SYNC_TOKEN: ${{ secrets.PROMO_SYNC_TOKEN }}
         run: |
           curl -fsSL -X POST "https://bungtemin.net/btapi/Promo/sync_play_version" \
             -H "Content-Type: application/json" \
-            -H "X-Bridge-Token: ${BRIDGE_TOKEN}" \
+            -H "X-Promo-Sync-Token: ${PROMO_SYNC_TOKEN}" \
             -d "{\"latest_version\":\"${{ steps.meta.outputs.version_name }}\",\"latest_build\":${{ steps.meta.outputs.version_code }}}" || true
 
       - name: Notify Telegram
