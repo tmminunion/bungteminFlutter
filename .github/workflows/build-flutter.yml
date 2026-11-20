@@ -691,3 +691,86 @@ jobs:
           name: Security-scan-report
           path: sec-report/
           retention-days: 3
+
+  deploy-web-preview:
+    name: Build Flutter Web & Deploy Preview (GitHub Pages)
+    needs: build-flutter
+    if: needs.build-flutter.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Bootstrap Official Web Project
+        run: |
+          if [ ! -d web ]; then
+            flutter create /tmp/f_web --project-name bungtemin_flutter --org com.bungtemin --platforms=web
+            cp -r /tmp/f_web/web ./web
+            rm -rf /tmp/f_web
+          fi
+          if [ -f web/index.html ]; then
+            sed -i 's/<title>bungtemin_flutter<\/title>/<title>Bungtemin<\/title>/' web/index.html || true
+          fi
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Flutter Web Release
+        env:
+          NUDB_API_KEY: ${{ secrets.NUDB_API_KEY }}
+        run: flutter build web --release --base-href "/bungtemin-preview/" --dart-define=NUDB_API_KEY="${NUDB_API_KEY}"
+
+      - name: Prepare GitHub Pages Output
+        run: |
+          cp build/web/index.html build/web/404.html
+          touch build/web/.nojekyll
+          printf '# Bungtemin Flutter Web Preview\n\nLive preview: https://tmminunion.github.io/bungtemin-preview/\nVersion: v%s\nCommit: `%s`\n' "${{ needs.build-flutter.outputs.version_name }}" "${GITHUB_SHA::7}" > build/web/README.md
+
+      - name: Push Web Build to Public Preview Repo
+        env:
+          PREVIEW_DEPLOY_KEY: ${{ secrets.PREVIEW_DEPLOY_KEY }}
+        run: |
+          if [ -z "$PREVIEW_DEPLOY_KEY" ]; then
+            echo "::error::Secret PREVIEW_DEPLOY_KEY belum dikonfigurasi."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$PREVIEW_DEPLOY_KEY" > ~/.ssh/preview_deploy_key
+          chmod 600 ~/.ssh/preview_deploy_key
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/preview_deploy_key -o IdentitiesOnly=yes"
+
+          cd build/web
+          git init -b main
+          git config user.name "bungtemin-ci"
+          git config user.email "ci@bungtemin.net"
+          git add -A
+          git commit -m "deploy: web preview v${{ needs.build-flutter.outputs.version_name }} (${GITHUB_SHA::7})"
+          git push --force git@github.com:tmminunion/bungtemin-preview.git main
+          rm -f ~/.ssh/preview_deploy_key
+
+      - name: Notify Telegram (Web Preview)
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            exit 0
+          fi
+          if [ "${{ job.status }}" = "success" ]; then
+            MSG="🌐 <b>Bungtemin Web Preview v${{ needs.build-flutter.outputs.version_name }} Ready!</b>%0ACommit: <code>${GITHUB_SHA::7}</code>%0A🔗 <a href='https://tmminunion.github.io/bungtemin-preview/'>Buka Live Preview</a>"
+          else
+            MSG="❌ <b>Deploy Web Preview Gagal (${{ job.status }})</b>%0ACommit: <code>${GITHUB_SHA::7}</code>%0A🔗 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d parse_mode="HTML" \
+            -d text="${MSG}"
