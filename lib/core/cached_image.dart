@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'net/btapi_auth.dart';
@@ -85,21 +86,24 @@ class BungteminCachedImage extends StatelessWidget {
       return errorWidget ?? const SizedBox.shrink();
     }
 
-    return Image.network(
-      url,
-        headers: BtapiAuth.imageHeaders(url),
+    return CachedNetworkImage(
+      imageUrl: url,
+      httpHeaders: BtapiAuth.imageHeaders(url),
       fit: fit,
       width: width,
       height: height,
-      cacheWidth: memCacheWidth,
-      cacheHeight: memCacheHeight,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded || frame != null) {
-          return child;
+      memCacheWidth: memCacheWidth,
+      memCacheHeight: memCacheHeight,
+      maxHeightDiskCache: memCacheHeight != null ? (memCacheHeight! * 2) : 800,
+      fadeInDuration: const Duration(milliseconds: 180),
+      placeholder: (_, __) =>
+          placeholder ?? Container(color: const Color(0xFFE2E8F0)),
+      errorWidget: (_, __, ___) => errorWidget ?? const SizedBox.shrink(),
+      errorListener: (e) {
+        if (kDebugMode) {
+          debugPrint('BungteminCachedImage error ($url): ${e.runtimeType}');
         }
-        return placeholder ?? Container(color: const Color(0xFFE2E8F0));
       },
-      errorBuilder: (_, __, ___) => errorWidget ?? const SizedBox.shrink(),
     );
   }
 }
