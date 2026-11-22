@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -130,10 +132,28 @@ class PromoModalHelper {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF16A34A),
               ),
-              onPressed: () {
-                final uri = Uri.tryParse(playUrl);
-                if (uri != null) {
-                  launchUrl(uri, mode: LaunchMode.externalApplication);
+              onPressed: () async {
+                var openedInline = false;
+                if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+                  try {
+                    const ch = MethodChannel('com.bung.teminapps/play_inline');
+                    openedInline = await ch.invokeMethod<bool>(
+                          'openInlineInstall',
+                          const {
+                            'packageId': 'com.bung.teminapps',
+                            'referrer': 'bungtemin_update',
+                          },
+                        ) ??
+                        false;
+                  } catch (_) {
+                    openedInline = false;
+                  }
+                }
+                if (!openedInline) {
+                  final uri = Uri.tryParse(playUrl);
+                  if (uri != null) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
                 }
                 if (!forceUpdate && ctx.mounted) {
                   Navigator.pop(ctx);
