@@ -107,6 +107,21 @@ jobs:
               manifest = manifest.replace("<application", f"{nfc_feat}\n    <application", 1)
 
           manifest = re.sub(r'android:label="[^"]*"', 'android:label="Bungtemin"', manifest, count=1)
+          if 'pathPrefix="/btapp"' not in manifest:
+              deep_link_filter = '''
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="bungtemin.net" android:pathPrefix="/btapp"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="btapp"/>
+            </intent-filter>'''
+              manifest = manifest.replace("</activity>", deep_link_filter + "\n        </activity>", 1)
 
           # Hardening VAT / MobSF Security Audit:
           # 1. Matikan ADB Backup & Auto-Backup cloud untuk mencegah ekstraksi data sesi lokal

@@ -9,6 +9,7 @@ import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/bungtemin_menu.dart';
 import '../../services/bungtemin_api.dart';
+import '../../services/deep_link_service.dart';
 import '../../services/fcm_service.dart';
 import '../about/contact_screen.dart';
 import '../about/feedback_screen.dart';
@@ -69,6 +70,7 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<PushPayload>? _pushTapSub;
+  StreamSubscription<Uri>? _deepLinkSub;
   UserSession? _session;
   String _checkedPinNoreg = '';
 
@@ -77,10 +79,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
     super.initState();
     _session = widget.session;
     _pushTapSub = FcmService.instance.onNotificationTap.listen(_handlePushTap);
+    _deepLinkSub = DeepLinkService.instance.onUri.listen(_handleDeepLinkUri);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pending = FcmService.instance.consumePendingLaunchPayload();
       if (pending != null && mounted) {
         _handlePushTap(pending);
+      }
+      final pendingUri = DeepLinkService.instance.consumePendingUri();
+      if (pendingUri != null && mounted) {
+        _handleDeepLinkUri(pendingUri);
       }
       _checkTtlSecurityPrompt();
     });
@@ -98,6 +105,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   @override
   void dispose() {
     _pushTapSub?.cancel();
+    _deepLinkSub?.cancel();
     super.dispose();
   }
 
@@ -335,6 +343,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ],
       ),
     );
+  }
+
+  void _handleDeepLinkUri(Uri uri) {
+    if (!mounted) return;
+    final route = DeepLinkService.resolveInternalRoute(uri);
+    if (route == '/home') return;
+    final fakeItem = BungteminMenuItem(
+      label: 'Bungtemin',
+      route: route,
+      iconAsset: 'assets/icon/1.png',
+      requiresLogin: BungteminMenuItem.requiresLoginFor(route, label: 'Bungtemin'),
+    );
+    _handleMenuTap(fakeItem);
   }
 
   void _handlePushTap(PushPayload payload) {

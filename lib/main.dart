@@ -11,6 +11,7 @@ import 'features/shell/main_shell.dart';
 import 'features/shell/service_block_screen.dart';
 import 'features/tutorial/tutorial_screen.dart';
 import 'services/app_control_service.dart';
+import 'services/deep_link_service.dart';
 import 'services/fcm_service.dart';
 
 Future<void> main() async {
@@ -91,6 +92,7 @@ class _BungteminFlutterAppState extends State<BungteminFlutterApp>
     });
     unawaited(_refreshControlStatus());
     unawaited(FcmService.instance.init(initialNoreg: loadedSession?.noreg));
+    unawaited(DeepLinkService.instance.init());
   }
 
   Future<void> _refreshControlStatus() async {
