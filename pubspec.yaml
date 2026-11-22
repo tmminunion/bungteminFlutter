@@ -1,7 +1,7 @@
 name: bungtemin_flutter
 description: "Bungtemin Mobile (PUK SP LEM SPSI PT. TMMIN) built with Flutter."
 publish_to: 'none'
-version: 10.1.4+64
+version: 10.1.5+65
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
