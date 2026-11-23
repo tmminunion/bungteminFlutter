@@ -1286,7 +1286,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 'message': text,
               }),
             )
-            .timeout(const Duration(seconds: 50));
+            .timeout(const Duration(seconds: 120));
         final body = jsonDecode(res.body) as Map<String, dynamic>;
         if (res.statusCode == 200 && body['success'] == true) {
           final u = ChatMessageItem.fromJson(
