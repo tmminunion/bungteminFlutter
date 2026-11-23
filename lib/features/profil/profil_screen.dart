@@ -345,7 +345,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                       },
                                       onAddressSaved: () {
                                         if (mounted) {
-                                          _load();
+                                          _loadCachedAndFreshKta();
                                         }
                                       },
                                     ),
@@ -1398,7 +1398,7 @@ class _KeamananSlideState extends State<_KeamananSlide> {
 
   @override
   void didUpdateWidget(covariant _KeamananSlide oldWidget) {
-    super.didUpdateWidget(covariant _KeamananSlide oldWidget);
+    super.didUpdateWidget(oldWidget);
     if (widget.waNumber != oldWidget.waNumber && _phoneCtrl.text.trim().isEmpty) {
       _phoneCtrl.text = widget.waNumber;
     }
