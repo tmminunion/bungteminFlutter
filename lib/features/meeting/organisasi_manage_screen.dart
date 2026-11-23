@@ -463,8 +463,8 @@ class _OrganisasiManageScreenState extends State<OrganisasiManageScreen> {
                           labelText: 'Komisi / Bidang',
                           isDense: true,
                         ),
-                        items: const [
-                          for (final k in [
+                        items: [
+                          for (final k in const [
                             'A', 'B', 'C', 'D', 'E',
                             'Ketua', 'Sekretaris', 'Bendahara',
                           ])
