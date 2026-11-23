@@ -8,6 +8,7 @@ import '../../core/app_info.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/bungtemin_menu.dart';
+import '../../services/app_analytics_service.dart';
 import '../../services/bungtemin_api.dart';
 import '../../services/deep_link_service.dart';
 import '../../services/fcm_service.dart';
@@ -90,6 +91,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _handleDeepLinkUri(pendingUri);
       }
       _checkTtlSecurityPrompt();
+      AppAnalyticsService.instance.trackScreen('/app/home');
     });
   }
 
@@ -295,6 +297,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openAbout() {
+    AppAnalyticsService.instance.trackScreen('/app/about');
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -414,6 +417,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openNews({int segment = 0}) {
+    AppAnalyticsService.instance.trackScreen('/app/news');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (ctx) => Scaffold(
@@ -427,6 +431,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openProfil() {
+    AppAnalyticsService.instance.trackScreen('/app/profil');
     _withLogin(
       'Masuk terlebih dahulu untuk membuka Profil Anggota Anda.',
       (s) => Navigator.of(context).push(
@@ -438,6 +443,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openKta() {
+    AppAnalyticsService.instance.trackScreen('/app/kta');
     _withLogin(
       'Masuk terlebih dahulu untuk membuka KTA Digital 3D Anda.',
       (s) => Navigator.of(context).push(
@@ -486,6 +492,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openMeeting({int segment = 0}) {
+    AppAnalyticsService.instance.trackScreen('/app/meeting');
     _withLogin(
       'Masuk terlebih dahulu untuk mengakses Jadwal & Tiket Meeting.',
       (s) => Navigator.of(context).push(
@@ -574,6 +581,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openTabFeed() {
+    AppAnalyticsService.instance.trackScreen('/app/tabfeed');
     _withLogin(
       'Masuk terlebih dahulu untuk membuka Cerita Komunitas.',
       (s) => Navigator.of(context).push(
@@ -588,6 +596,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openChat({String? roomId, String? titleHint}) {
+    AppAnalyticsService.instance.trackScreen('/app/chat');
     _withLogin(
       'Masuk terlebih dahulu untuk membuka Chat Anggota & B.A.I.M AI.',
       (s) {
@@ -625,6 +634,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openInbox() {
+    AppAnalyticsService.instance.trackScreen('/app/inbox');
     _withLogin(
       'Masuk terlebih dahulu untuk membuka Kotak Masuk Broadcast.',
       (_) => Navigator.of(context).push(
@@ -636,6 +646,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openContact() {
+    AppAnalyticsService.instance.trackScreen('/app/contact');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const ContactScreen(),
@@ -652,6 +663,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openCalendar() {
+    AppAnalyticsService.instance.trackScreen('/app/kalender');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const CalendarScreen(),
@@ -660,6 +672,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openScanner() {
+    AppAnalyticsService.instance.trackScreen('/app/btscan');
     _withLogin(
       'Masuk terlebih dahulu untuk menggunakan pemindai QR (BTScan).',
       (s) => Navigator.of(context).push(
@@ -674,6 +687,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openStruktur() {
+    AppAnalyticsService.instance.trackScreen('/app/struktur');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const StrukturScreen(),
@@ -682,6 +696,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openProker() {
+    AppAnalyticsService.instance.trackScreen('/app/proker');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const ProkerScreen(),
@@ -690,6 +705,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openTonton() {
+    AppAnalyticsService.instance.trackScreen('/app/tonton');
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const TontonScreen(),
@@ -698,6 +714,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openLapor({String? initialCategoryKey}) {
+    AppAnalyticsService.instance.trackScreen('/app/lapor');
     _withLogin(
       'Masuk terlebih dahulu untuk mengakses layanan Hallo PUK.',
       (s) => Navigator.of(context).push(
@@ -712,6 +729,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openMyArs() {
+    AppAnalyticsService.instance.trackScreen('/app/myars');
     _withLogin(
       'Masuk terlebih dahulu untuk melihat tiket & riwayat absensi MyArs.',
       (s) => Navigator.of(context).push(
@@ -874,6 +892,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   void _executeMenuRoute(BungteminMenuItem item) {
     final rawRoute = item.route.trim();
+    if (rawRoute.isNotEmpty) {
+      AppAnalyticsService.instance.trackScreen(rawRoute);
+    } else if (item.label.trim().isNotEmpty) {
+      final slug = item.label.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+      AppAnalyticsService.instance.trackScreen('/app/menu/$slug');
+    }
     final route = rawRoute.toLowerCase();
     final rawParts =
         rawRoute.split('/').where((s) => s.trim().isNotEmpty).toList();

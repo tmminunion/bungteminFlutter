@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/cached_image.dart';
 import '../../core/theme.dart';
 import '../../models/news_item.dart';
+import '../../services/app_analytics_service.dart';
 import '../about/contact_screen.dart';
 
 class NewsDetailScreen extends StatelessWidget {
@@ -37,7 +38,9 @@ class NewsDetailScreen extends StatelessWidget {
     final badgeColor =
         item.isInternal ? AppColors.primaryBlue : AppColors.indigo;
 
-    return Scaffold(
+    return ScreenViewTracker(
+      onTrack: () => AppAnalyticsService.instance.trackNews(item),
+      child: Scaffold(
       backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
@@ -318,6 +321,7 @@ class NewsDetailScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

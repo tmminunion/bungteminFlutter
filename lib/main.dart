@@ -10,6 +10,7 @@ import 'core/theme.dart';
 import 'features/shell/main_shell.dart';
 import 'features/shell/service_block_screen.dart';
 import 'features/tutorial/tutorial_screen.dart';
+import 'services/app_analytics_service.dart';
 import 'services/app_control_service.dart';
 import 'services/deep_link_service.dart';
 import 'services/fcm_service.dart';
@@ -125,6 +126,7 @@ class _BungteminFlutterAppState extends State<BungteminFlutterApp>
     return MaterialApp(
       title: 'Bungtemin',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [AppAnalyticsObserver()],
       theme: buildBungteminTheme(),
       builder: (context, child) => _OfflineBanner(child: child),
       home: !_ready
