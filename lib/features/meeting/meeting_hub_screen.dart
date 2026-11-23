@@ -7,6 +7,7 @@ import '../../models/meeting_meta.dart';
 import '../../services/bungtemin_api.dart';
 import 'meeting_create_screen.dart';
 import 'meeting_tab.dart';
+import 'organisasi_manage_screen.dart';
 
 /// Hub Management Meeting: empat grup (PUK, KP, Pleno, Anggota) + Struktur Organisasi,
 /// mengikuti sidebar web organisasi dan hak akses per role.
@@ -107,56 +108,20 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
     if (created == true && mounted) _load();
   }
 
-  void _openStruktur(String label) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          22,
-          16,
-          22,
-          MediaQuery.of(ctx).padding.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Pengaturan struktur (tambah, ubah, hapus KP, Pleno, dan anggota) '
-              'sedang disiapkan untuk aplikasi. Sementara ini kelola lewat web '
-              'bungtemin.net/organisasi.',
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.55,
-                color: Color(0xFF475569),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Mengerti'),
-              ),
-            ),
-          ],
+  Future<void> _openStruktur(String label, OrgSectionMode mode) async {
+    final meta = _meta;
+    if (meta == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OrganisasiManageScreen(
+          session: widget.session,
+          meta: meta,
+          mode: mode,
+          titleOverride: label,
         ),
       ),
     );
+    if (mounted) _load();
   }
 
   @override
@@ -201,15 +166,17 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
       ),
     ];
 
-    final struktur = <(String, IconData)>[
+    final struktur = <(String, IconData, OrgSectionMode)>[
       if (admin) ...[
-        ('PUK', Icons.business_center_outlined),
-        ('KP (Koordinator Pleno)', Icons.apartment_rounded),
-        ('PLENO', Icons.groups_rounded),
-      ] else if (meta?.isKp ?? false)
-        ('Pleno KP Saya', Icons.groups_rounded)
-      else if (meta?.isPleno ?? false)
-        ('Member Binaan Saya', Icons.groups_rounded),
+        ('PUK', Icons.business_center_outlined, OrgSectionMode.puk),
+        ('KP (Koordinator Pleno)', Icons.apartment_rounded, OrgSectionMode.kp),
+        ('PLENO', Icons.groups_rounded, OrgSectionMode.pleno),
+        ('Anggota (Member Basis)', Icons.people_alt_rounded, OrgSectionMode.member),
+      ] else if (meta?.isKp ?? false) ...[
+        ('Pleno KP Saya', Icons.groups_rounded, OrgSectionMode.pleno),
+        ('Anggota KP Saya', Icons.people_alt_rounded, OrgSectionMode.member),
+      ] else if (meta?.isPleno ?? false)
+        ('Member Binaan Saya', Icons.people_alt_rounded, OrgSectionMode.member),
     ];
 
     return Container(
@@ -261,25 +228,12 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
                                   color: AppColors.navy,
                                 ),
                               ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.amber.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Text(
-                                  'Segera',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFFB45309),
-                                  ),
-                                ),
+                              trailing: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.muted,
                               ),
-                              onTap: () => _openStruktur(struktur[i].$1),
+                              onTap: () =>
+                                  _openStruktur(struktur[i].$1, struktur[i].$3),
                             ),
                           ],
                         ],
