@@ -330,6 +330,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                       key: const ValueKey('keamanan_pin'),
                                       hasPin: _hasPin,
                                       waNumber: _waNumber,
+                                      alamat: m?.alamat ?? '',
                                       token: widget.session.token,
                                       api: _api,
                                       onPinSaved: () {
@@ -340,6 +341,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
                                       onPhoneSaved: (newWa) {
                                         if (mounted) {
                                           setState(() => _waNumber = newWa);
+                                        }
+                                      },
+                                      onAddressSaved: () {
+                                        if (mounted) {
+                                          _load();
                                         }
                                       },
                                     ),
@@ -1352,18 +1358,22 @@ class _KeamananSlide extends StatefulWidget {
     super.key,
     required this.hasPin,
     required this.waNumber,
+    required this.alamat,
     required this.token,
     required this.api,
     required this.onPinSaved,
     required this.onPhoneSaved,
+    required this.onAddressSaved,
   });
 
   final bool? hasPin;
   final String waNumber;
+  final String alamat;
   final String token;
   final BungteminApi api;
   final VoidCallback onPinSaved;
   final ValueChanged<String> onPhoneSaved;
+  final VoidCallback onAddressSaved;
 
   @override
   State<_KeamananSlide> createState() => _KeamananSlideState();
@@ -1373,21 +1383,27 @@ class _KeamananSlideState extends State<_KeamananSlide> {
   final _pinCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
   bool _obscure = true;
   bool _saving = false;
   bool _savingPhone = false;
+  bool _savingAddress = false;
 
   @override
   void initState() {
     super.initState();
     _phoneCtrl.text = widget.waNumber;
+    _addressCtrl.text = widget.alamat;
   }
 
   @override
   void didUpdateWidget(covariant _KeamananSlide oldWidget) {
-    super.didUpdateWidget(oldWidget);
+    super.didUpdateWidget(covariant _KeamananSlide oldWidget);
     if (widget.waNumber != oldWidget.waNumber && _phoneCtrl.text.trim().isEmpty) {
       _phoneCtrl.text = widget.waNumber;
+    }
+    if (widget.alamat != oldWidget.alamat && _addressCtrl.text.trim().isEmpty) {
+      _addressCtrl.text = widget.alamat;
     }
   }
 
@@ -1396,7 +1412,48 @@ class _KeamananSlideState extends State<_KeamananSlide> {
     _pinCtrl.dispose();
     _confirmCtrl.dispose();
     _phoneCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitAddress() async {
+    final alamat = _addressCtrl.text.trim();
+    if (alamat.length < 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Alamat domisili minimal 5 karakter.'),
+          backgroundColor: AppColors.amber,
+        ),
+      );
+      return;
+    }
+    setState(() => _savingAddress = true);
+    try {
+      final msg = await widget.api.updateAddress(
+        alamat: alamat,
+        token: widget.token,
+      );
+      if (!mounted) return;
+      widget.onAddressSaved();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingAddress = false);
+      }
+    }
   }
 
   Future<void> _submitPhone() async {
@@ -1651,6 +1708,58 @@ class _KeamananSlideState extends State<_KeamananSlide> {
                 : const Icon(Icons.check_rounded, size: 18),
             label: const Text(
               'Simpan No. Telepon / WA',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Divider(height: 1),
+          const SizedBox(height: 18),
+          const Text(
+            'Alamat Domisili',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14.5,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Alamat yang tersimpan akan tampil pada Kartu Tanda Anggota (KTA) Anda.',
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _addressCtrl,
+            minLines: 2,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Alamat Domisili',
+              hintText: 'Masukkan alamat lengkap tempat tinggal',
+              prefixIcon: Icon(Icons.location_on_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _savingAddress ? null : _submitAddress,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: _savingAddress
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save_rounded, size: 18),
+            label: const Text(
+              'Simpan Alamat Domisili',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),

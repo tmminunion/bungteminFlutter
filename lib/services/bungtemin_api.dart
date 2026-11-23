@@ -325,6 +325,36 @@ class BungteminApi {
     return (decoded['message'] ?? 'Nomor WhatsApp / telepon berhasil diperbarui.').toString();
   }
 
+  Future<String> updateAddress({
+    required String alamat,
+    required String token,
+  }) async {
+    if (token.trim().isEmpty) {
+      throw BungteminApiException('Sesi login tidak valid. Silakan login ulang.');
+    }
+    final res = await http
+        .post(
+          Uri.parse('$_baseUrl/btapi/User/update_address'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'alamat': alamat.trim()}),
+        )
+        .timeout(_timeout);
+
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw BungteminApiException('Respons server tidak valid.');
+    }
+    if (res.statusCode >= 400 || decoded['status'] == 'error') {
+      throw BungteminApiException(
+        (decoded['pesan'] ?? decoded['message'] ?? 'Gagal menyimpan alamat domisili.').toString(),
+      );
+    }
+    return (decoded['message'] ?? 'Alamat domisili berhasil diperbarui.').toString();
+  }
+
   Future<bool?> fetchPinStatus({required String token}) async {
     if (token.trim().isEmpty) return null;
     try {
