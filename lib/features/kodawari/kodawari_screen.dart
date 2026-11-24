@@ -320,6 +320,8 @@ class _KodawariScreenState extends State<KodawariScreen> {
     int chosenColor = editing?.colorValue ?? _palette.first.toARGB32();
     int chosenIcon = editing?.iconCodePoint ?? _groupIcons.first.codePoint;
 
+    try {
+    try {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -513,6 +515,9 @@ class _KodawariScreenState extends State<KodawariScreen> {
         ),
       ),
     );
+    } finally {
+      nameCtrl.dispose();
+    }
   }
 
   Future<void> _openTaskSheet({KodawariTask? editing}) async {
@@ -742,6 +747,10 @@ class _KodawariScreenState extends State<KodawariScreen> {
         ),
       ),
     );
+    } finally {
+      titleCtrl.dispose();
+      notesCtrl.dispose();
+    }
   }
 
   String _formatDate(DateTime dt) {

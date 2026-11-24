@@ -150,11 +150,13 @@ class _MeetingCreateScreenState extends State<MeetingCreateScreen> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 2),
     );
+    if (!mounted) return;
     if (picked != null) setState(() => _tanggal = picked);
   }
 
   Future<void> _pickStart() async {
     final t = await showTimePicker(context: context, initialTime: _jamMulai);
+    if (!mounted) return;
     if (t != null) setState(() => _jamMulai = t);
   }
 

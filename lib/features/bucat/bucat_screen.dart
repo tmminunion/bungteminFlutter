@@ -168,7 +168,7 @@ class _BucatScreenState extends State<BucatScreen> {
         builder: (_) => BucatEditorScreen(initialNote: note),
       ),
     );
-    if (result == null) return;
+    if (!mounted || result == null) return;
 
     if (result.deleted && note != null) {
       setState(() {
