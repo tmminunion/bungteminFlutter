@@ -1271,8 +1271,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (text.isEmpty || _sending) return;
     if (preset == null) _msgCtrl.clear();
 
-    setState(() => _sending = true);
     final self8 = _norm8(widget.session.noreg);
+    final tempId = -DateTime.now().millisecondsSinceEpoch;
+    setState(() {
+      _sending = true;
+      if (_isBaim) {
+        _messages.add(ChatMessageItem(
+          id: tempId,
+          roomId: widget.roomId,
+          senderNoreg: self8,
+          senderNama: widget.session.nama,
+          receiverNoreg: 'BAIM_AI',
+          message: text,
+          isAi: false,
+          createdAt: DateTime.now().toIso8601String(),
+        ));
+      }
+    });
+    if (_isBaim) _scrollToBottom();
 
     try {
       if (_isBaim) {
@@ -1297,6 +1313,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           );
           if (!mounted) return;
           setState(() {
+            _messages.removeWhere((m) => m.id == tempId);
             _messages.addAll([u, ai]);
             _sending = false;
           });
@@ -1336,7 +1353,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     } catch (_) {}
 
     if (!mounted) return;
-    setState(() => _sending = false);
+    setState(() {
+      if (_isBaim) _messages.removeWhere((m) => m.id == tempId);
+      _sending = false;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Gagal mengirim pesan. Periksa koneksi Anda.')),
     );
@@ -1448,8 +1468,37 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     : ListView.builder(
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-                        itemCount: _messages.length,
+                        itemCount: _messages.length + (_isBaim && _sending ? 1 : 0),
                         itemBuilder: (_, idx) {
+                          if (_isBaim && _sending && idx == _messages.length) {
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 5),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.black12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'B.A.I.M sedang mengetik...',
+                                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
                           final m = _messages[idx];
                           final isMine = !m.isAi && _norm8(m.senderNoreg) == self8;
                           return _ChatBubble(
