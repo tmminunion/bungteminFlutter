@@ -321,7 +321,6 @@ class _KodawariScreenState extends State<KodawariScreen> {
     int chosenIcon = editing?.iconCodePoint ?? _groupIcons.first.codePoint;
 
     try {
-    try {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -533,6 +532,7 @@ class _KodawariScreenState extends State<KodawariScreen> {
         ? DateTime.tryParse(editing!.dueDateIso!)
         : null;
 
+    try {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
