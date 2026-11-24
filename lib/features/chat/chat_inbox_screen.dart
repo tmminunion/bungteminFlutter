@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/session_store.dart';
@@ -1174,12 +1175,14 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> {
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with WidgetsBindingObserver {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   List<ChatMessageItem> _messages = [];
   bool _loading = true;
   bool _sending = false;
+  bool _showScrollToBottom = false;
   bool _peerIsOnline = false;
   String _peerStatusText = '';
   StreamSubscription<PushPayload>? _fcmSub;
@@ -1189,6 +1192,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scrollCtrl.addListener(_onScrollChanged);
     _fetchMessages(initial: true);
     if (!_isBaim) {
       _fcmSub = FcmService.instance.onForegroundMessage.listen((payload) {
@@ -1203,17 +1208,39 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollCtrl.removeListener(_onScrollChanged);
     _fcmSub?.cancel();
     _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
 
+  void _onScrollChanged() {
+    if (!_scrollCtrl.hasClients) return;
+    final show = _scrollCtrl.offset > 140;
+    if (show != _showScrollToBottom && mounted) {
+      setState(() => _showScrollToBottom = show);
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      if (_scrollCtrl.offset < 120) {
+        _scrollToBottom();
+      }
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
         );
@@ -1372,6 +1399,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             : 'Noreg ${widget.peerNoreg}';
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFECE5DD),
       appBar: AppBar(
         backgroundColor: AppColors.navy,
@@ -1460,76 +1488,114 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
+                : _messages.isEmpty && !(_isBaim && _sending)
                     ? _EmptyChatHint(
                         isBaim: _isBaim,
                         onQuickPrompt: _isBaim ? _sendMessage : null,
                       )
-                    : ListView.builder(
-                        controller: _scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-                        itemCount: _messages.length + (_isBaim && _sending ? 1 : 0),
-                        itemBuilder: (_, idx) {
-                          if (_isBaim && _sending && idx == _messages.length) {
-                            return Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 5),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.black12),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                    : Stack(
+                        children: [
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: ListView.builder(
+                              controller: _scrollCtrl,
+                              reverse: true,
+                              shrinkWrap: true,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                              padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                              itemCount:
+                                  _messages.length + (_isBaim && _sending ? 1 : 0),
+                              itemBuilder: (_, idx) {
+                                final typingOffset =
+                                    (_isBaim && _sending) ? 1 : 0;
+                                if (typingOffset == 1 && idx == 0) {
+                                  return Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 5),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border:
+                                            Border.all(color: Colors.black12),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'B.A.I.M sedang mengetik...',
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.black54),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'B.A.I.M sedang mengetik...',
-                                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                                  );
+                                }
+                                final msgIdx =
+                                    _messages.length - 1 - (idx - typingOffset);
+                                final m = _messages[msgIdx];
+                                final isMine =
+                                    !m.isAi && _norm8(m.senderNoreg) == self8;
+                                return _ChatBubble(
+                                  message: m,
+                                  isMine: isMine,
+                                  showSenderName: !isMine &&
+                                      (widget.kind == 'group' || m.isAi),
+                                );
+                              },
+                            ),
+                          ),
+                          if (_showScrollToBottom)
+                            Positioned(
+                              right: 14,
+                              bottom: 12,
+                              child: Material(
+                                color: Colors.white,
+                                elevation: 4,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: _scrollToBottom,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: AppColors.navy,
+                                      size: 24,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            );
-                          }
-                          final m = _messages[idx];
-                          final isMine = !m.isAi && _norm8(m.senderNoreg) == self8;
-                          return _ChatBubble(
-                            message: m,
-                            isMine: isMine,
-                            showSenderName: !isMine && (widget.kind == 'group' || m.isAi),
-                          );
-                        },
+                            ),
+                        ],
                       ),
           ),
-          if (_sending && _isBaim)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: Text(
-                'B.A.I.M sedang mengetik...',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: Color(0xFF475569),
-                ),
-              ),
-            ),
           Container(
-            color: const Color(0xFFF1F5F9),
-            padding: EdgeInsets.fromLTRB(
-              10,
-              8,
-              10,
-              MediaQuery.of(context).padding.bottom + 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F5F9),
+              border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
             ),
-            child: Row(
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Row(
               children: [
                 Expanded(
                   child: TextField(
@@ -1575,6 +1641,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   ),
                 ),
               ],
+            ),
+              ),
             ),
           ),
         ],
@@ -1651,13 +1719,37 @@ class _ChatBubble extends StatelessWidget {
                 color: Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(height: 3),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                _formatTime(message.createdAt),
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  _formatTime(message.createdAt),
+                  style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: message.message));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Teks pesan disalin'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.copy_rounded,
+                      size: 13,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
