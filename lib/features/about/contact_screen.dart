@@ -11,8 +11,6 @@ class ContactScreen extends StatefulWidget {
 
   static const String officialEmail = 'sekretariat@bungtemin.net';
   static const String feedbackEmail = 'bungtemin@gmail.com';
-  static const String officialPhoneDisplay = '(021) 6515551 Ext. 2291-2163';
-  static const String officialPhoneUri = 'tel:+62216515551';
   static const String officialWaNumber = '6281315881071';
   static const String officialContactUrl = 'https://bungtemin.net/contact';
   static const String officialNewsUrl = 'https://bungtemin.net/news';
@@ -130,16 +128,6 @@ class _ContactScreenState extends State<ContactScreen> {
             value: ContactScreen.officialEmail,
             onTap: () => _launch('mailto:${ContactScreen.officialEmail}'),
             onCopy: () => _copy('Email', ContactScreen.officialEmail),
-          ),
-          const SizedBox(height: 10),
-          _ContactTile(
-            icon: Icons.phone_outlined,
-            color: AppColors.emerald,
-            label: 'Telepon Sekretariat',
-            value: ContactScreen.officialPhoneDisplay,
-            onTap: () => _launch(ContactScreen.officialPhoneUri),
-            onCopy: () =>
-                _copy('Nomor telepon', ContactScreen.officialPhoneDisplay),
           ),
           const SizedBox(height: 10),
           _ContactTile(
