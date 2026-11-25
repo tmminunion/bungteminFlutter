@@ -7,7 +7,6 @@ import '../../models/meeting_meta.dart';
 import '../../services/bungtemin_api.dart';
 import 'meeting_create_screen.dart';
 import 'meeting_tab.dart';
-import 'organisasi_manage_screen.dart';
 
 /// Hub Management Meeting: empat grup (PUK, KP, Pleno, Anggota) + Struktur Organisasi,
 /// mengikuti sidebar web organisasi dan hak akses per role.
@@ -108,22 +107,6 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
     if (created == true && mounted) _load();
   }
 
-  Future<void> _openStruktur(String label, OrgSectionMode mode) async {
-    final meta = _meta;
-    if (meta == null) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => OrganisasiManageScreen(
-          session: widget.session,
-          meta: meta,
-          mode: mode,
-          titleOverride: label,
-        ),
-      ),
-    );
-    if (mounted) _load();
-  }
-
   @override
   Widget build(BuildContext context) {
     final meta = _meta;
@@ -166,19 +149,6 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
       ),
     ];
 
-    final struktur = <(String, IconData, OrgSectionMode)>[
-      if (admin) ...[
-        ('PUK', Icons.business_center_outlined, OrgSectionMode.puk),
-        ('KP (Koordinator Pleno)', Icons.apartment_rounded, OrgSectionMode.kp),
-        ('PLENO', Icons.groups_rounded, OrgSectionMode.pleno),
-        ('Anggota (Member Basis)', Icons.people_alt_rounded, OrgSectionMode.member),
-      ] else if (meta?.isKp ?? false) ...[
-        ('Pleno KP Saya', Icons.groups_rounded, OrgSectionMode.pleno),
-        ('Anggota KP Saya', Icons.people_alt_rounded, OrgSectionMode.member),
-      ] else if (meta?.isPleno ?? false)
-        ('Member Binaan Saya', Icons.people_alt_rounded, OrgSectionMode.member),
-    ];
-
     return Container(
       color: AppColors.surface,
       child: RefreshIndicator(
@@ -200,45 +170,6 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
                     _ErrorBanner(message: _error!, onRetry: _load),
                   if (meta != null || _error != null) ...[
                     for (final g in groups) ...[g, const SizedBox(height: 14)],
-                  ],
-                  if (struktur.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    const _SectionLabel('Struktur Organisasi'),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < struktur.length; i++) ...[
-                            if (i > 0)
-                              const Divider(height: 1, indent: 16, endIndent: 16),
-                            ListTile(
-                              leading: Icon(
-                                struktur[i].$2,
-                                color: AppColors.primaryBlue,
-                              ),
-                              title: Text(
-                                struktur[i].$1,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.navy,
-                                ),
-                              ),
-                              trailing: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.muted,
-                              ),
-                              onTap: () =>
-                                  _openStruktur(struktur[i].$1, struktur[i].$3),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                   ],
                 ]),
               ),
@@ -369,24 +300,6 @@ class _MeetingHubScreenState extends State<MeetingHubScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.9,
-        color: AppColors.muted,
       ),
     );
   }

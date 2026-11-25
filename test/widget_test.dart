@@ -72,7 +72,7 @@ void main() {
       expect(parsed[1].label, 'Pintar');
       expect(parsed[1].route, '/training');
       expect(parsed[1].requiresLogin, isTrue);
-      expect(BungteminMenuItem.defaults.length, 22);
+      expect(BungteminMenuItem.defaults.length, 23);
     });
 
     test('parses WordPress internal and Blogger external news', () {

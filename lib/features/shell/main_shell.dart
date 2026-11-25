@@ -23,6 +23,7 @@ import '../home/home_tab.dart';
 import '../kta/kta_tab.dart';
 import '../lapor/lapor_screen.dart';
 import '../meeting/meeting_hub_screen.dart';
+import '../meeting/organisasi_hub_screen.dart';
 import '../meeting/meeting_room_screen.dart';
 import '../meeting/meeting_tab.dart';
 import '../myars/myars_absensi_detail_screen.dart';
@@ -479,6 +480,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
         } catch (_) {}
         if (mounted) _openMeeting();
       },
+    );
+  }
+
+  void _openOrganisasi() {
+    AppAnalyticsService.instance.trackScreen('/app/organisasi');
+    _withLogin(
+      'Masuk terlebih dahulu untuk mengakses Pengaturan Organisasi.',
+      (s) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => OrganisasiHubScreen(session: s),
+        ),
+      ),
     );
   }
 
@@ -972,6 +985,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
       );
       return;
     }
+    if (route.startsWith('/organisasi')) {
+      _openOrganisasi();
+      return;
+    }
     if (route.startsWith('/struktur')) {
       _openStruktur();
       return;
@@ -1300,6 +1317,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
           Navigator.of(context).pop();
           _openProfil();
         },
+        onOpenOrganisasi: () {
+          Navigator.of(context).pop();
+          _openOrganisasi();
+        },
         onOpenAccountSettings: () {
           Navigator.of(context).pop();
           _openAccountSettings();
@@ -1355,6 +1376,7 @@ class _BungteminDrawer extends StatelessWidget {
     required this.onOpenChat,
     required this.onOpenInbox,
     required this.onOpenProfil,
+    required this.onOpenOrganisasi,
     required this.onOpenAccountSettings,
     required this.onOpenAppSettings,
     required this.onOpenAbout,
@@ -1371,6 +1393,7 @@ class _BungteminDrawer extends StatelessWidget {
   final VoidCallback onOpenChat;
   final VoidCallback onOpenInbox;
   final VoidCallback onOpenProfil;
+  final VoidCallback onOpenOrganisasi;
   final VoidCallback onOpenAccountSettings;
   final VoidCallback onOpenAppSettings;
   final VoidCallback onOpenAbout;
@@ -1540,6 +1563,14 @@ class _BungteminDrawer extends StatelessWidget {
                       color: AppColors.muted,
                     ),
                   ),
+                ),
+                _DrawerTile(
+                  iconData: Icons.account_tree_rounded,
+                  title: 'Organisasi',
+                  subtitle: loggedIn ? 'Setting PUK, KP, Pleno & Anggota' : 'Butuh login pengurus',
+                  selected: false,
+                  locked: !loggedIn,
+                  onTap: onOpenOrganisasi,
                 ),
                 _DrawerTile(
                   iconData: Icons.manage_accounts_rounded,

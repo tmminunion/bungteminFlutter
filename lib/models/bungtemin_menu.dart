@@ -61,6 +61,7 @@ class BungteminMenuItem {
         r.startsWith('/training') ||
         r.startsWith('/scanner') ||
         r.startsWith('/meeting') ||
+        r.startsWith('/organisasi') ||
         r.startsWith('/aplikasi') ||
         r.startsWith('/myscanner') ||
         r.startsWith('/lapor') ||
@@ -78,6 +79,7 @@ class BungteminMenuItem {
       'profil',
       'btscan',
       'meeting',
+      'organisasi',
       'btapp',
       'hallo puk',
       'cerita',
@@ -124,6 +126,12 @@ class BungteminMenuItem {
       label: 'Meeting',
       iconAsset: 'assets/icon/23.png',
       route: '/meeting',
+      requiresLogin: true,
+    ),
+    BungteminMenuItem(
+      label: 'Organisasi',
+      iconAsset: 'assets/icon/7.png',
+      route: '/organisasi',
       requiresLogin: true,
     ),
     BungteminMenuItem(
