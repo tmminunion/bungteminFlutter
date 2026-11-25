@@ -980,94 +980,118 @@ class _OrganisasiManageScreenState extends State<OrganisasiManageScreen> {
               ),
               const SizedBox(height: 10),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  InkWell(
-                    onTap: () => _editPhoneQuick(item),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: phone.isNotEmpty
-                            ? AppColors.emerald.withValues(alpha: 0.1)
-                            : AppColors.amber.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.phone_rounded,
-                            size: 14,
-                            color: phone.isNotEmpty
-                                ? const Color(0xFF047857)
-                                : const Color(0xFFB45309),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            phone.isNotEmpty ? _maskPhone(phone) : 'Isi No. WA',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: () => _editPhoneQuick(item),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
                               color: phone.isNotEmpty
-                                  ? const Color(0xFF047857)
-                                  : const Color(0xFFB45309),
+                                  ? AppColors.emerald.withValues(alpha: 0.1)
+                                  : AppColors.amber.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_rounded,
+                                  size: 14,
+                                  color: phone.isNotEmpty
+                                      ? const Color(0xFF047857)
+                                      : const Color(0xFFB45309),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  phone.isNotEmpty
+                                      ? _maskPhone(phone)
+                                      : 'Isi No. WA',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: phone.isNotEmpty
+                                        ? const Color(0xFF047857)
+                                        : const Color(0xFFB45309),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.edit_rounded,
+                                  size: 13,
+                                  color: AppColors.muted,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.edit_rounded,
-                            size: 13,
-                            color: AppColors.muted,
+                        ),
+                        if (widget.mode == OrgSectionMode.kp)
+                          Text(
+                            '${item['total_pleno'] ?? 0} Pleno · ${item['total_member'] ?? 0} Anggota',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.muted,
+                            ),
+                          )
+                        else if (widget.mode == OrgSectionMode.pleno)
+                          Text(
+                            '${item['total_member'] ?? 0} Anggota',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.muted,
+                            ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                  if (widget.mode == OrgSectionMode.kp) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      '${item['total_pleno'] ?? 0} Pleno · ${item['total_member'] ?? 0} Anggota',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ] else if (widget.mode == OrgSectionMode.pleno) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      '${item['total_member'] ?? 0} Anggota',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
                   if (_canCreateOrEdit) ...[
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 19,
-                        color: AppColors.primaryBlue,
-                      ),
-                      tooltip: 'Edit',
-                      onPressed: () => _openEditor(existing: item),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 19,
-                        color: AppColors.rose,
-                      ),
-                      tooltip: 'Hapus',
-                      onPressed: () => _confirmDelete(item),
+                    const SizedBox(width: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            size: 19,
+                            color: AppColors.primaryBlue,
+                          ),
+                          tooltip: 'Edit',
+                          onPressed: () => _openEditor(existing: item),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 19,
+                            color: AppColors.rose,
+                          ),
+                          tooltip: 'Hapus',
+                          onPressed: () => _confirmDelete(item),
+                        ),
+                      ],
                     ),
                   ],
                 ],
