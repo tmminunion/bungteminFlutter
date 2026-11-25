@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/session_store.dart';
@@ -74,7 +75,56 @@ class _LaporScreenState extends State<LaporScreen> {
   }
 
   Future<void> _saveTicket(AspirasiTicket ticket) async {
-    final updated = [ticket, ..._riwayatList].take(20).toList();
+    var finalStatus = ticket.status;
+    try {
+      final res = await http
+          .post(
+            Uri.parse('https://bungtemin.net/btapi/Hallopuk/submit'),
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'ticket_code': ticket.id,
+              'kategori': ticket.kategori,
+              'kategori_label': ticket.kategoriLabel,
+              'noreg': _prefillNoreg.isNotEmpty ? _prefillNoreg : ticket.noreg,
+              'nama': ticket.nama,
+              'bagian': ticket.bagian,
+              'judul': ticket.judul,
+              'isi': ticket.isi,
+              'has_attachment': ticket.hasAttachment,
+              'attachment_name': ticket.attachmentName ?? '',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map && decoded['success'] == true) {
+          finalStatus = 'Terkirim ke PUK';
+        }
+      }
+    } catch (_) {
+      finalStatus = 'Tersimpan Lokal';
+    }
+
+    final saved = AspirasiTicket(
+      id: ticket.id,
+      kategori: ticket.kategori,
+      kategoriLabel: ticket.kategoriLabel,
+      nama: ticket.nama,
+      noreg: ticket.noreg,
+      bagian: ticket.bagian,
+      judul: ticket.judul,
+      isi: ticket.isi,
+      hasAttachment: ticket.hasAttachment,
+      attachmentName: ticket.attachmentName,
+      createdAtIso: ticket.createdAtIso,
+      status: finalStatus,
+    );
+
+    final updated = [saved, ..._riwayatList].take(20).toList();
+    if (!mounted) return;
     setState(() {
       _riwayatList = updated;
     });
