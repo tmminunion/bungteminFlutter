@@ -151,13 +151,26 @@ class _BucatScreenState extends State<BucatScreen> {
 
   Future<void> _syncWithServer(List<BucatNote> localNotes) async {
     try {
-      final enc = BungteminCrypto.encrypt(_noreg);
-      final res = await http
+      var enc = await SessionStore().loadServerEncNoreg();
+      if (enc.isEmpty) enc = BungteminCrypto.encrypt(_noreg);
+      var res = await http
           .get(
             Uri.parse('$_bucatApiBase/list?enc_noreg=${Uri.encodeComponent(enc)}'),
             headers: _authHeaders,
           )
           .timeout(const Duration(seconds: 12));
+      if (res.statusCode == 409) {
+        final refreshed = await SessionStore().refreshServerEncNoreg(token: _token);
+        if (refreshed.isNotEmpty) {
+          enc = refreshed;
+          res = await http
+              .get(
+                Uri.parse('$_bucatApiBase/list?enc_noreg=${Uri.encodeComponent(enc)}'),
+                headers: _authHeaders,
+              )
+              .timeout(const Duration(seconds: 12));
+        }
+      }
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final decoded = jsonDecode(res.body);
         final items = (decoded is Map ? decoded['items'] : null) as List?;

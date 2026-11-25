@@ -81,6 +81,10 @@ class _LaporScreenState extends State<LaporScreen> {
     var finalStatus = ticket.status;
     try {
       final noregVal = _prefillNoreg.isNotEmpty ? _prefillNoreg : ticket.noreg;
+      final serverEnc = await SessionStore().loadServerEncNoreg();
+      final encVal = serverEnc.isNotEmpty
+          ? serverEnc
+          : (noregVal != '-' && noregVal.isNotEmpty ? BungteminCrypto.encrypt(noregVal) : '');
       final res = await http
           .post(
             Uri.parse('https://bungtemin.net/btapi/Hallopuk/submit'),
@@ -94,7 +98,7 @@ class _LaporScreenState extends State<LaporScreen> {
               'ticket_code': ticket.id,
               'kategori': ticket.kategori,
               'kategori_label': ticket.kategoriLabel,
-              'enc_noreg': BungteminCrypto.encrypt(noregVal),
+              if (encVal.isNotEmpty) 'enc_noreg': encVal,
               'nama': ticket.nama,
               'bagian': ticket.bagian,
               'judul': ticket.judul,

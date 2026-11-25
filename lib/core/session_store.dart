@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'net/api_cache_store.dart';
@@ -57,6 +59,8 @@ class SessionStore {
   static const _kBannersCache = 'bt_banners_cache';
   static const _kSavedStoryIds = 'bt_saved_story_ids';
   static const _kSavedReelIds = 'bt_saved_reel_ids';
+  static const _kServerEncNoreg = 'bt_server_enc_noreg';
+  static const _kServerKeyVersion = 'bt_server_key_version';
 
   static String formatNoreg8(String raw) {
     final clean = raw.trim().replaceFirst(RegExp(r'^0+'), '');
@@ -257,5 +261,44 @@ class SessionStore {
   Future<void> saveSavedReelIds(Set<String> ids) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_kSavedReelIds, ids.toList());
+  }
+
+  Future<String> loadServerEncNoreg() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getString(_kServerEncNoreg) ?? '').trim();
+  }
+
+  Future<String> refreshServerEncNoreg({String? token}) async {
+    try {
+      var tok = (token ?? '').trim();
+      if (tok.isEmpty) {
+        final s = await load();
+        tok = (s?.token ?? '').trim();
+      }
+      if (tok.isEmpty) return '';
+      final res = await http
+          .get(
+            Uri.parse('https://bungtemin.net/btapi/User/refresh_qr'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $tok',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map) {
+          final enc = (decoded['enc_noreg'] ?? '').toString().trim();
+          final ver = int.tryParse('${decoded['key_version'] ?? 1}') ?? 1;
+          if (enc.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_kServerEncNoreg, enc);
+            await prefs.setInt(_kServerKeyVersion, ver);
+            return enc;
+          }
+        }
+      }
+    } catch (_) {}
+    return '';
   }
 }

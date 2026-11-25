@@ -117,6 +117,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (!mounted || s == null || !s.isValid || s.token.trim().isEmpty) return;
     if (_checkedPinNoreg == s.noreg) return;
     _checkedPinNoreg = s.noreg;
+    unawaited(SessionStore().refreshServerEncNoreg(token: s.token));
 
     final hasPin = await BungteminApi().fetchPinStatus(token: s.token);
     if (!mounted || hasPin != false) return;
