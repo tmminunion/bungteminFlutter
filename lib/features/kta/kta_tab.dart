@@ -9,6 +9,162 @@ import '../../models/kta_member.dart';
 import '../../services/bungtemin_api.dart';
 import '../../core/net/btapi_auth.dart';
 
+
+class KtaDigitalScreen extends StatefulWidget {
+  const KtaDigitalScreen({
+    super.key,
+    required this.session,
+    this.initialMember,
+    this.onAddressUpdated,
+  });
+
+  final UserSession session;
+  final KtaMember? initialMember;
+  final VoidCallback? onAddressUpdated;
+
+  @override
+  State<KtaDigitalScreen> createState() => _KtaDigitalScreenState();
+}
+
+class _KtaDigitalScreenState extends State<KtaDigitalScreen> {
+  final _ktaKey = GlobalKey<_KtaTabState>();
+  final _api = BungteminApi();
+
+  Future<void> _openEditDomisiliDialog() async {
+    final currentAlamat =
+        _ktaKey.currentState?._member?.alamat ?? widget.initialMember?.alamat ?? '';
+    final ctrl = TextEditingController(
+      text: currentAlamat.trim() == '-' ? '' : currentAlamat.trim(),
+    );
+    var saving = false;
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setModalState) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.edit_location_alt_rounded, color: AppColors.primaryBlue),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Ubah Alamat Domisili',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            content: TextField(
+              controller: ctrl,
+              minLines: 2,
+              maxLines: 4,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Alamat Domisili',
+                hintText: 'Masukkan alamat domisili lengkap...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final alamat = ctrl.text.trim();
+                        if (alamat.length < 5) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Alamat domisili minimal 5 karakter.'),
+                              backgroundColor: AppColors.amber,
+                            ),
+                          );
+                          return;
+                        }
+                        setModalState(() => saving = true);
+                        try {
+                          final msg = await _api.updateAddress(
+                            alamat: alamat,
+                            token: widget.session.token,
+                          );
+                          if (!mounted) return;
+                          if (ctx.mounted) Navigator.of(ctx).pop();
+                          await _ktaKey.currentState?._loadKta();
+                          widget.onAddressUpdated?.call();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(msg),
+                              backgroundColor: AppColors.emerald,
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          setModalState(() => saving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      },
+                child: saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      ctrl.dispose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1325),
+        title: const Text(
+          'KTA Digital FSP LEM SPSI',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _openEditDomisiliDialog,
+            icon: const Icon(Icons.edit_rounded, size: 20),
+            tooltip: 'Ubah Alamat Domisili',
+          ),
+        ],
+      ),
+      body: KtaTab(
+        key: _ktaKey,
+        session: widget.session,
+        initialMember: widget.initialMember,
+      ),
+    );
+  }
+}
+
 class KtaTab extends StatefulWidget {
   const KtaTab({
     super.key,

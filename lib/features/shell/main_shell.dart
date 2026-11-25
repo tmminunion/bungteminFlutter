@@ -448,16 +448,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       'Masuk terlebih dahulu untuk membuka KTA Digital 3D Anda.',
       (s) => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            appBar: AppBar(
-              backgroundColor: const Color(0xFF0B1325),
-              title: const Text(
-                'KTA Digital FSP LEM SPSI',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
-              ),
-            ),
-            body: KtaTab(session: s),
-          ),
+          builder: (_) => KtaDigitalScreen(session: s),
         ),
       ),
     );

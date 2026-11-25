@@ -95,18 +95,12 @@ class _ProfilScreenState extends State<ProfilScreen> {
   void _openKtaScreen() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF0B1325),
-            title: const Text(
-              'KTA Digital FSP LEM SPSI',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
-            ),
-          ),
-          body: KtaTab(
-            session: widget.session,
-            initialMember: _member,
-          ),
+        builder: (_) => KtaDigitalScreen(
+          session: widget.session,
+          initialMember: _member,
+          onAddressUpdated: () {
+            _loadCachedAndFreshKta();
+          },
         ),
       ),
     );
