@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/screen_security.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/meeting_meta.dart';
@@ -50,6 +51,7 @@ class _OrganisasiManageScreenState extends State<OrganisasiManageScreen> {
   @override
   void initState() {
     super.initState();
+    ScreenSecurity.enable();
     _selectedKpNo = widget.filterKpNo ??
         ((widget.meta.isKp && !widget.meta.canManageAll)
             ? widget.meta.kpNo
@@ -60,8 +62,16 @@ class _OrganisasiManageScreenState extends State<OrganisasiManageScreen> {
 
   @override
   void dispose() {
+    ScreenSecurity.disable();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  String _maskPhone(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    if (s.length <= 4) return 'xxxx';
+    return '${s.substring(0, s.length - 4)}xxxx';
   }
 
   Map<String, String> get _headers => {
@@ -997,7 +1007,7 @@ class _OrganisasiManageScreenState extends State<OrganisasiManageScreen> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            phone.isNotEmpty ? phone : 'Isi No. WA',
+                            phone.isNotEmpty ? _maskPhone(phone) : 'Isi No. WA',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/screen_security.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../models/meeting_meta.dart';
@@ -30,7 +31,14 @@ class _OrganisasiHubScreenState extends State<OrganisasiHubScreen> {
   @override
   void initState() {
     super.initState();
+    ScreenSecurity.enable();
     _load();
+  }
+
+  @override
+  void dispose() {
+    ScreenSecurity.disable();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -66,7 +74,10 @@ class _OrganisasiHubScreenState extends State<OrganisasiHubScreen> {
         ),
       ),
     );
-    if (mounted) _load();
+    if (mounted) {
+      ScreenSecurity.enable();
+      _load();
+    }
   }
 
   @override
