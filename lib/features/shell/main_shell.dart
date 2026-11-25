@@ -484,18 +484,27 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
-  Future<void> _openOrganisasiFromDrawer() async {
+  Future<void> _openFromDrawerWithMenuGuard({
+    required List<String> routePrefixes,
+    List<String> labelEquals = const [],
+    required VoidCallback onAllowed,
+  }) async {
     try {
       final menus = await BungteminApi().fetchMenus();
       if (!mounted) return;
-      final match = menus.where((m) => m.route.trim().toLowerCase().startsWith('/organisasi')).toList();
+      final match = menus.where((m) {
+        final r = m.route.trim().toLowerCase();
+        final lbl = m.label.trim().toLowerCase();
+        return routePrefixes.any((p) => r.startsWith(p)) ||
+            labelEquals.contains(lbl);
+      }).toList();
       if (match.isNotEmpty && (match.first.isOff || match.first.isMaintenance)) {
         _handleMenuTap(match.first);
         return;
       }
     } catch (_) {}
     if (!mounted) return;
-    _openOrganisasi();
+    onAllowed();
   }
 
   void _openOrganisasi() {
@@ -1321,23 +1330,39 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenHome: () => Navigator.of(context).pop(),
         onOpenNews: () {
           Navigator.of(context).pop();
-          _openNews();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/news', '/berita'],
+            onAllowed: _openNews,
+          );
         },
         onOpenKta: () {
           Navigator.of(context).pop();
-          _openKta();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/idcard', '/kta'],
+            onAllowed: _openKta,
+          );
         },
         onOpenScanner: () {
           Navigator.of(context).pop();
-          _openScanner();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/scanner'],
+            onAllowed: _openScanner,
+          );
         },
         onOpenChat: () {
           Navigator.of(context).pop();
-          _openChat();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/chat'],
+            labelEquals: const ['chat'],
+            onAllowed: _openChat,
+          );
         },
         onOpenInbox: () {
           Navigator.of(context).pop();
-          _openInbox();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/inbox'],
+            onAllowed: _openInbox,
+          );
         },
         onOpenProfil: () {
           Navigator.of(context).pop();
@@ -1345,7 +1370,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onOpenOrganisasi: () {
           Navigator.of(context).pop();
-          _openOrganisasiFromDrawer();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/organisasi'],
+            onAllowed: _openOrganisasi,
+          );
         },
         onOpenAccountSettings: () {
           Navigator.of(context).pop();
@@ -1361,7 +1389,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onOpenContact: () {
           Navigator.of(context).pop();
-          _openContact();
+          _openFromDrawerWithMenuGuard(
+            routePrefixes: const ['/contact', '/hubungi'],
+            onAllowed: _openContact,
+          );
         },
         onLoginTap: () {
           Navigator.of(context).pop();
