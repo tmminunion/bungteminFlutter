@@ -75,38 +75,122 @@ class DeepLinkService {
     final rest = segments.length > 1 ? segments.sublist(1).join('/') : '';
 
     switch (head) {
+      // Beranda & Kotak Masuk
       case 'home':
       case 'beranda':
         return '/home';
       case 'inbox':
       case 'pengumuman':
+      case 'notifikasi':
         return '/inbox';
+
+      // Menu Utama (Main)
+      case 'berita':
+      case 'news':
+        return '/news';
+      case 'cerita':
       case 'feed':
       case 'tabfeed':
-      case 'berita':
-        return '/tabfeed';
+        return '/tabfeed/feed';
+      case 'tonton':
+      case 'video':
+        return '/tonton';
+      case 'pintar':
+      case 'training':
+        return rest.isNotEmpty ? '/training/$rest' : '/training';
+      case 'training-pleno':
+        return '/training-pleno';
+      case 'training-ticket':
+        return '/training-ticket';
+      case 'lapor':
+      case 'hallopuk':
+      case 'hallo-puk':
+      case 'hallo_puk':
+        return rest.isNotEmpty ? '/lapor/$rest' : '/lapor';
       case 'meeting':
       case 'rapat':
         return rest.isNotEmpty ? '/meeting/$rest' : '/meeting';
-      case 'tiket':
-      case 'absensi':
-      case 'myars':
-        return '/aplikasi/absensi/tiketlist';
+      case 'organisasi':
+      case 'org':
+        return '/organisasi';
+      case 'btapp':
+      case 'aplikasi':
+        return rest.isNotEmpty ? '/aplikasi/$rest' : '/aplikasi';
+      case 'struktur':
+        return '/struktur';
+      case 'profil':
+      case 'profile':
+        return '/profil';
       case 'kta':
+      case 'idcard':
         return '/kta';
-      case 'chat':
-        return '/chat';
-      case 'lapor':
-      case 'feedback':
-        return '/lapor';
+      case 'btscan':
+      case 'scanner':
+      case 'scan':
+        return '/scanner';
+      case 'myscanner':
+        return rest.isNotEmpty ? '/myscanner/$rest' : '/aplikasi/absensi';
       case 'kalender':
       case 'calendar':
-        return '/calendar';
+        return '/kalender';
+
+      // Menu Tambahan (Extra)
+      case 'proker':
+        return '/proker';
       case 'keuangan':
       case 'finance':
         return '/keuangan';
-      case 'profil':
-        return '/profil';
+      case 'myars':
+      case 'tiket':
+      case 'tiketlist':
+        return '/aplikasi/absensi/tiketlist';
+      case 'tiketdetail':
+        return rest.isNotEmpty
+            ? '/aplikasi/absensi/tiketdetail/$rest'
+            : '/aplikasi/absensi/tiketlist';
+      case 'absensi':
+      case 'event':
+      case 'events':
+        return rest.isNotEmpty
+            ? '/aplikasi/absensi/absensidetail/$rest'
+            : '/aplikasi/absensilist';
+      case 'bubabe':
+        return '/bubabe';
+      case 'quiz':
+        return '/quiz/lobby';
+      case 'pretest':
+        return '/pretest/lobby';
+      case 'bucat':
+      case 'note':
+      case 'catatan':
+        return '/aplikasi/note';
+      case 'kodawari':
+      case 'todo':
+        return '/aplikasi/todo';
+      case 'buku':
+      case 'buku-pintar':
+      case 'buku_pintar':
+      case 'bukupintar':
+        return rest.isNotEmpty ? '/buku/$rest' : '/pintar';
+      case 'chat':
+        return rest.isNotEmpty ? '/chat/$rest' : '/chat';
+      case 'saran':
+      case 'feedback':
+      case 'saran-app':
+      case 'saran_app':
+        return '/saran';
+      case 'nfc':
+      case 'emoney':
+      case 'cek-emoney':
+      case 'cek_emoney':
+      case 'nfc-emoney':
+        return '/nfc-emoney';
+      case 'contact':
+      case 'hubungi':
+        return '/contact';
+      case 'tutorial':
+        return '/tutorial';
+
       default:
         return '/${segments.join('/')}';
     }
