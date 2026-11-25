@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/session_store.dart';
 import '../../core/theme.dart';
 
 class BucatNote {
@@ -79,6 +81,8 @@ class BucatScreen extends StatefulWidget {
 
 class _BucatScreenState extends State<BucatScreen> {
   static const _storageKey = 'bucat_notes_v1';
+  static const _bucatApiBase = 'https://bungtemin.net/btapi/Bucat';
+  String _noreg = '';
 
   static const List<String> _categories = [
     'Semua',
@@ -122,11 +126,54 @@ class _BucatScreenState extends State<BucatScreen> {
       } catch (_) {}
     }
 
+    final session = await SessionStore().load();
+    _noreg = (session?.noreg ?? '').trim();
+
     if (!mounted) return;
     setState(() {
       _notes = notes;
       _loading = false;
     });
+
+    if (_noreg.isNotEmpty) {
+      unawaited(_syncWithServer(notes));
+    }
+  }
+
+  Future<void> _syncWithServer(List<BucatNote> localNotes) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_bucatApiBase/list?noreg=${Uri.encodeComponent(_noreg)}'))
+          .timeout(const Duration(seconds: 12));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        final items = (decoded is Map ? decoded['items'] : null) as List?;
+        if (items != null && items.isNotEmpty) {
+          final serverNotes = items
+              .whereType<Map>()
+              .map((e) => BucatNote.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+          if (!mounted) return;
+          setState(() => _notes = serverNotes);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+            _storageKey,
+            jsonEncode(serverNotes.map((e) => e.toJson()).toList()),
+          );
+        } else if (localNotes.isNotEmpty) {
+          await http
+              .post(
+                Uri.parse('$_bucatApiBase/sync'),
+                headers: const {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'noreg': _noreg,
+                  'notes': localNotes.map((e) => e.toJson()).toList(),
+                }),
+              )
+              .timeout(const Duration(seconds: 12));
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _saveNotes() async {
@@ -135,6 +182,21 @@ class _BucatScreenState extends State<BucatScreen> {
       _storageKey,
       jsonEncode(_notes.map((e) => e.toJson()).toList()),
     );
+    if (_noreg.isNotEmpty) {
+      unawaited(
+        http
+            .post(
+              Uri.parse('$_bucatApiBase/sync'),
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'noreg': _noreg,
+                'notes': _notes.map((e) => e.toJson()).toList(),
+              }),
+            )
+            .timeout(const Duration(seconds: 12))
+            .catchError((_) => http.Response('', 500)),
+      );
+    }
   }
 
   List<BucatNote> get _filteredNotes {
@@ -211,6 +273,18 @@ class _BucatScreenState extends State<BucatScreen> {
       _notes.removeWhere((n) => n.id == note.id);
     });
     await _saveNotes();
+    if (_noreg.isNotEmpty) {
+      unawaited(
+        http
+            .post(
+              Uri.parse('$_bucatApiBase/delete'),
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode({'noreg': _noreg, 'id': note.id}),
+            )
+            .timeout(const Duration(seconds: 10))
+            .catchError((_) => http.Response('', 500)),
+      );
+    }
   }
 
   String _formatUpdated(String iso) {
