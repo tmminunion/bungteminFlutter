@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/bungtemin_crypto.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
 
@@ -83,6 +84,7 @@ class _BucatScreenState extends State<BucatScreen> {
   static const _storageKey = 'bucat_notes_v1';
   static const _bucatApiBase = 'https://bungtemin.net/btapi/Bucat';
   String _noreg = '';
+  String _token = '';
 
   static const List<String> _categories = [
     'Semua',
@@ -128,6 +130,7 @@ class _BucatScreenState extends State<BucatScreen> {
 
     final session = await SessionStore().load();
     _noreg = (session?.noreg ?? '').trim();
+    _token = (session?.token ?? '').trim();
 
     if (!mounted) return;
     setState(() {
@@ -135,15 +138,25 @@ class _BucatScreenState extends State<BucatScreen> {
       _loading = false;
     });
 
-    if (_noreg.isNotEmpty) {
+    if (_noreg.isNotEmpty && _token.isNotEmpty) {
       unawaited(_syncWithServer(notes));
     }
   }
 
+  Map<String, String> get _authHeaders => {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $_token',
+      };
+
   Future<void> _syncWithServer(List<BucatNote> localNotes) async {
     try {
+      final enc = BungteminCrypto.encrypt(_noreg);
       final res = await http
-          .get(Uri.parse('$_bucatApiBase/list?noreg=${Uri.encodeComponent(_noreg)}'))
+          .get(
+            Uri.parse('$_bucatApiBase/list?enc_noreg=${Uri.encodeComponent(enc)}'),
+            headers: _authHeaders,
+          )
           .timeout(const Duration(seconds: 12));
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final decoded = jsonDecode(res.body);
@@ -164,9 +177,9 @@ class _BucatScreenState extends State<BucatScreen> {
           await http
               .post(
                 Uri.parse('$_bucatApiBase/sync'),
-                headers: const {'Content-Type': 'application/json'},
+                headers: _authHeaders,
                 body: jsonEncode({
-                  'noreg': _noreg,
+                  'enc_noreg': enc,
                   'notes': localNotes.map((e) => e.toJson()).toList(),
                 }),
               )
@@ -182,14 +195,14 @@ class _BucatScreenState extends State<BucatScreen> {
       _storageKey,
       jsonEncode(_notes.map((e) => e.toJson()).toList()),
     );
-    if (_noreg.isNotEmpty) {
+    if (_noreg.isNotEmpty && _token.isNotEmpty) {
       unawaited(
         http
             .post(
               Uri.parse('$_bucatApiBase/sync'),
-              headers: const {'Content-Type': 'application/json'},
+              headers: _authHeaders,
               body: jsonEncode({
-                'noreg': _noreg,
+                'enc_noreg': BungteminCrypto.encrypt(_noreg),
                 'notes': _notes.map((e) => e.toJson()).toList(),
               }),
             )
@@ -273,13 +286,16 @@ class _BucatScreenState extends State<BucatScreen> {
       _notes.removeWhere((n) => n.id == note.id);
     });
     await _saveNotes();
-    if (_noreg.isNotEmpty) {
+    if (_noreg.isNotEmpty && _token.isNotEmpty) {
       unawaited(
         http
             .post(
               Uri.parse('$_bucatApiBase/delete'),
-              headers: const {'Content-Type': 'application/json'},
-              body: jsonEncode({'noreg': _noreg, 'id': note.id}),
+              headers: _authHeaders,
+              body: jsonEncode({
+                'enc_noreg': BungteminCrypto.encrypt(_noreg),
+                'id': note.id,
+              }),
             )
             .timeout(const Duration(seconds: 10))
             .catchError((_) => http.Response('', 500)),

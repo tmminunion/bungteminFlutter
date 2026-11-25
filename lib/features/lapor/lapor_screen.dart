@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/bungtemin_crypto.dart';
 import '../../core/session_store.dart';
 import '../../models/aspirasi_item.dart';
 
@@ -29,6 +30,7 @@ class _LaporScreenState extends State<LaporScreen> {
   String _prefillNama = '';
   String _prefillNoreg = '';
   String _prefillBagian = '';
+  String _sessionToken = '';
 
   @override
   void initState() {
@@ -60,6 +62,7 @@ class _LaporScreenState extends State<LaporScreen> {
       _prefillNama = s?.nama ?? '';
       _prefillNoreg = s?.noreg ?? '';
       _prefillBagian = bagian;
+      _sessionToken = (s?.token ?? '').trim();
       _riwayatList = history;
     });
 
@@ -77,18 +80,21 @@ class _LaporScreenState extends State<LaporScreen> {
   Future<void> _saveTicket(AspirasiTicket ticket) async {
     var finalStatus = ticket.status;
     try {
+      final noregVal = _prefillNoreg.isNotEmpty ? _prefillNoreg : ticket.noreg;
       final res = await http
           .post(
             Uri.parse('https://bungtemin.net/btapi/Hallopuk/submit'),
-            headers: const {
+            headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
+              if (_sessionToken.isNotEmpty)
+                'Authorization': 'Bearer $_sessionToken',
             },
             body: jsonEncode({
               'ticket_code': ticket.id,
               'kategori': ticket.kategori,
               'kategori_label': ticket.kategoriLabel,
-              'noreg': _prefillNoreg.isNotEmpty ? _prefillNoreg : ticket.noreg,
+              'enc_noreg': BungteminCrypto.encrypt(noregVal),
               'nama': ticket.nama,
               'bagian': ticket.bagian,
               'judul': ticket.judul,
