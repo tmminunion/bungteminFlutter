@@ -964,18 +964,23 @@ class BungteminApi {
     }
   }
 
-  Future<List<BungteminMenuItem>> fetchMenus() async {
+  Future<List<BungteminMenuItem>> fetchMenus({bool includeOff = false}) async {
     try {
+      final url = includeOff
+          ? '$_baseUrl/btapi/Menu/list?all=1'
+          : '$_baseUrl/btapi/Menu/list';
       final ctrlRes = await http
           .get(
-            Uri.parse('$_baseUrl/btapi/Menu/list'),
+            Uri.parse(url),
             headers: BtapiAuth.headers(),
           )
           .timeout(const Duration(seconds: 8));
       if (ctrlRes.statusCode == 200) {
         final parsed = parseMenuJson(ctrlRes.body);
         if (parsed.isNotEmpty) {
-          await SessionStore().saveMenuCache(ctrlRes.body);
+          if (!includeOff) {
+            await SessionStore().saveMenuCache(ctrlRes.body);
+          }
           return parsed;
         }
       }

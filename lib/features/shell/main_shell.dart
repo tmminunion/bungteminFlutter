@@ -490,7 +490,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     required VoidCallback onAllowed,
   }) async {
     try {
-      final menus = await BungteminApi().fetchMenus();
+      final menus = await BungteminApi().fetchMenus(includeOff: true);
       if (!mounted) return;
       final match = menus.where((m) {
         final r = m.route.trim().toLowerCase();
