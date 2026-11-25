@@ -94,7 +94,7 @@ class _LaporScreenState extends State<LaporScreen> {
               'judul': ticket.judul,
               'isi': ticket.isi,
               'has_attachment': ticket.hasAttachment,
-              'attachment_name': ticket.attachmentName ?? '',
+              'attachment_name': ticket.attachmentName,
             }),
           )
           .timeout(const Duration(seconds: 15));
