@@ -9,7 +9,7 @@ import 'feedback_screen.dart';
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
 
-  static const String officialEmail = 'spsi@toyota.co.id';
+  static const String officialEmail = 'sekretariat@bungtemin.net';
   static const String feedbackEmail = 'bungtemin@gmail.com';
   static const String officialPhoneDisplay = '(021) 6515551 Ext. 2291-2163';
   static const String officialPhoneUri = 'tel:+62216515551';
