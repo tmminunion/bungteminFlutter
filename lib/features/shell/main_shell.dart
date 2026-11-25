@@ -483,6 +483,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  Future<void> _openOrganisasiFromDrawer() async {
+    try {
+      final menus = await BungteminApi().fetchMenus();
+      if (!mounted) return;
+      final match = menus.where((m) => m.route.trim().toLowerCase().startsWith('/organisasi')).toList();
+      if (match.isNotEmpty && (match.first.isOff || match.first.isMaintenance)) {
+        _handleMenuTap(match.first);
+        return;
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    _openOrganisasi();
+  }
+
   void _openOrganisasi() {
     AppAnalyticsService.instance.trackScreen('/app/organisasi');
     _withLogin(
@@ -850,6 +864,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _handleMenuTap(BungteminMenuItem item) {
+    if (item.isOff) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Menu ${item.label} sedang dinonaktifkan sementara oleh Admin.'),
+          backgroundColor: AppColors.navy,
+        ),
+      );
+      return;
+    }
     if (item.isMaintenance) {
       final msg = item.maintenanceMessage.trim().isNotEmpty
           ? item.maintenanceMessage.trim()
@@ -1261,6 +1284,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         return 'Layanan aspirasi, tanya pengurus, usulan, serta pelaporan anggota ke PUK SP LEM SPSI.';
       case 'btapp':
         return 'Pusat utilitas & aplikasi internal penunjang aktivitas kerja dan organisasi.';
+      case 'organisasi':
+        return 'Pengaturan struktur PUK, Koordinator Pleno (KP), Pleno, dan Anggota Basis sesuai role web organisasi.';
       case 'struktur':
         return 'Susunan kepengurusan PUK SP LEM SPSI PT. TMMIN dan koordinator pleno per area.';
       case 'btscan':
@@ -1319,7 +1344,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onOpenOrganisasi: () {
           Navigator.of(context).pop();
-          _openOrganisasi();
+          _openOrganisasiFromDrawer();
         },
         onOpenAccountSettings: () {
           Navigator.of(context).pop();

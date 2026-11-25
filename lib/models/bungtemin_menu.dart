@@ -133,6 +133,7 @@ class BungteminMenuItem {
       iconAsset: 'assets/icon/7.png',
       route: '/organisasi',
       requiresLogin: true,
+      group: 'main',
     ),
     BungteminMenuItem(
       label: 'BTapp',
