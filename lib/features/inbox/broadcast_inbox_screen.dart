@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/screen_security.dart';
 import '../../core/theme.dart';
 import '../../services/inbox_service.dart';
+import '../survey/survey_screen.dart';
 
 class BroadcastInboxScreen extends StatefulWidget {
   const BroadcastInboxScreen({super.key});
@@ -131,6 +132,13 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Form & Survey',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SurveyListScreen()),
+            ),
+            icon: const Icon(Icons.assignment_outlined),
+          ),
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
@@ -463,7 +471,16 @@ class _BroadcastInboxDetailScreenState
   }
 
   Future<void> _openUrl(String raw) async {
-    final uri = Uri.tryParse(raw.trim());
+    final trimmed = raw.trim();
+    final surveyMatch = RegExp(r'/survey/([a-zA-Z0-9_-]+)', caseSensitive: false).firstMatch(trimmed);
+    if (surveyMatch != null && mounted) {
+      final slug = surveyMatch.group(1)!;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => SurveyFormScreen(slug: slug)),
+      );
+      return;
+    }
+    final uri = Uri.tryParse(trimmed);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
