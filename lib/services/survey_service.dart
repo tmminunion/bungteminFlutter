@@ -12,6 +12,12 @@ class SurveySummary {
     required this.questionCount,
     required this.responseCount,
     required this.createdAt,
+    this.iconUrl = '',
+    this.bannerUrl = '',
+    this.accentColor = '#2563EB',
+    this.floatingEnabled = false,
+    this.floatingImageUrl = '',
+    this.floatingLabel = '',
   });
 
   final int id;
@@ -21,6 +27,12 @@ class SurveySummary {
   final int questionCount;
   final int responseCount;
   final String createdAt;
+  final String iconUrl;
+  final String bannerUrl;
+  final String accentColor;
+  final bool floatingEnabled;
+  final String floatingImageUrl;
+  final String floatingLabel;
 
   factory SurveySummary.fromJson(Map<String, dynamic> json) {
     return SurveySummary(
@@ -31,6 +43,12 @@ class SurveySummary {
       questionCount: (json['question_count'] as num?)?.toInt() ?? 0,
       responseCount: (json['response_count'] as num?)?.toInt() ?? 0,
       createdAt: (json['created_at'] ?? '').toString(),
+      iconUrl: (json['icon_url'] ?? '').toString().trim(),
+      bannerUrl: (json['banner_url'] ?? '').toString().trim(),
+      accentColor: (json['accent_color'] ?? '#2563EB').toString().trim(),
+      floatingEnabled: json['floating_enabled'] == true,
+      floatingImageUrl: (json['floating_image_url'] ?? '').toString().trim(),
+      floatingLabel: (json['floating_label'] ?? '').toString().trim(),
     );
   }
 }
@@ -73,6 +91,9 @@ class SurveyDetail {
     required this.title,
     required this.description,
     required this.fields,
+    this.iconUrl = '',
+    this.bannerUrl = '',
+    this.accentColor = '#2563EB',
   });
 
   final int surveyId;
@@ -80,6 +101,9 @@ class SurveyDetail {
   final String title;
   final String description;
   final List<SurveyField> fields;
+  final String iconUrl;
+  final String bannerUrl;
+  final String accentColor;
 
   factory SurveyDetail.fromJson(Map<String, dynamic> json) {
     final rawFields = json['fields'];
@@ -95,6 +119,9 @@ class SurveyDetail {
       title: (json['title'] ?? '').toString(),
       description: (json['description'] ?? '').toString(),
       fields: fields,
+      iconUrl: (json['icon_url'] ?? '').toString().trim(),
+      bannerUrl: (json['banner_url'] ?? '').toString().trim(),
+      accentColor: (json['accent_color'] ?? '#2563EB').toString().trim(),
     );
   }
 }
@@ -104,6 +131,20 @@ class SurveyService {
   static final SurveyService instance = SurveyService._();
 
   static const String _baseUrl = 'https://bungtemin.net/btapi/survey';
+
+  Future<SurveySummary?> fetchFloatingSurvey() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_baseUrl/floating'))
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return null;
+      final map = jsonDecode(res.body);
+      if (map is Map && map['status'] == 'success' && map['data'] is Map) {
+        return SurveySummary.fromJson(Map<String, dynamic>.from(map['data'] as Map));
+      }
+    } catch (_) {}
+    return null;
+  }
 
   Future<List<SurveySummary>> fetchSurveys() async {
     final res = await http

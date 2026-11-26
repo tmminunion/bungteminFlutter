@@ -4,6 +4,15 @@ import '../../core/theme.dart';
 import '../../core/session_store.dart';
 import '../../services/survey_service.dart';
 
+Color _parseSurveyColor(String hex, Color fallback) {
+  final clean = hex.replaceAll('#', '').trim();
+  if (clean.length == 6) {
+    final val = int.tryParse('FF$clean', radix: 16);
+    if (val != null) return Color(val);
+  }
+  return fallback;
+}
+
 class SurveyListScreen extends StatefulWidget {
   const SurveyListScreen({super.key});
 
@@ -112,15 +121,26 @@ class _SurveyListScreenState extends State<SurveyListScreen> {
                                 padding: const EdgeInsets.all(14),
                                 child: Row(
                                   children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryBlue.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(Icons.assignment_rounded, color: AppColors.primaryBlue),
-                                    ),
+                                    Builder(builder: (_) {
+                                      final accent = _parseSurveyColor(s.accentColor, AppColors.primaryBlue);
+                                      return Container(
+                                        width: 46,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          color: accent.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: s.iconUrl.isNotEmpty
+                                            ? Image.network(
+                                                s.iconUrl,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Icon(Icons.assignment_rounded, color: accent),
+                                              )
+                                            : Icon(Icons.assignment_rounded, color: accent),
+                                      );
+                                    }),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
@@ -593,12 +613,30 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   : ListView(
                       padding: const EdgeInsets.all(14),
                       children: [
+                        if (detail!.bannerUrl.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Image.network(
+                              detail.bannerUrl,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                            ),
+                          ),
                         Container(
                           margin: const EdgeInsets.only(bottom: 14),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.navy, AppColors.blueAccent],
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.navy,
+                                _parseSurveyColor(detail.accentColor, AppColors.blueAccent),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -608,7 +646,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                detail!.title,
+                                detail.title,
                                 style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900, color: Colors.white),
                               ),
                               if (detail.description.isNotEmpty) ...[

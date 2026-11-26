@@ -13,6 +13,8 @@ import '../../services/inbox_service.dart';
 import '../inbox/broadcast_inbox_screen.dart';
 import '../news/news_detail_screen.dart';
 import 'promo_modal_dialog.dart';
+import '../../services/survey_service.dart';
+import '../survey/survey_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({
@@ -47,6 +49,8 @@ class _HomeTabState extends State<HomeTab> {
   bool _loadingNews = true;
   bool _notificationsRead = false;
   bool _promoChecked = false;
+  SurveySummary? _floatingSurvey;
+  bool _floatingDismissed = false;
   List<String> _banners = [
     for (var i = 1; i <= 6; i++)
       'https://bungtemin.net/assets/img/ads/$i.jpg?v=new',
@@ -64,6 +68,7 @@ class _HomeTabState extends State<HomeTab> {
     _loadUnreadInboxCount();
     _startBannerAutoPlay();
     _checkAndShowPromoModal();
+    _loadFloatingSurvey();
   }
 
   @override
@@ -126,6 +131,12 @@ class _HomeTabState extends State<HomeTab> {
         curve: Curves.easeOutCubic,
       );
     });
+  }
+
+  Future<void> _loadFloatingSurvey() async {
+    final item = await SurveyService.instance.fetchFloatingSurvey();
+    if (!mounted) return;
+    setState(() => _floatingSurvey = item);
   }
 
   Future<void> _checkAndShowPromoModal() async {
@@ -648,7 +659,9 @@ class _HomeTabState extends State<HomeTab> {
 
     return Container(
       color: AppColors.surface,
-      child: RefreshIndicator(
+      child: Stack(
+        children: [
+          RefreshIndicator(
         onRefresh: _loadAll,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 28),
@@ -1150,6 +1163,118 @@ class _HomeTabState extends State<HomeTab> {
             ],
           ],
         ),
+          ),
+          if (_floatingSurvey != null && !_floatingDismissed)
+            Positioned(
+              right: 14,
+              bottom: 18,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      final f = _floatingSurvey!;
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SurveyFormScreen(
+                            slug: f.slug,
+                            initialTitle: f.title,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_floatingSurvey!.floatingImageUrl.isNotEmpty)
+                          Image.network(
+                            _floatingSurvey!.floatingImageUrl,
+                            width: 74,
+                            height: 74,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 58,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryBlue,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
+                            ),
+                          )
+                        else
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryBlue,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
+                          ),
+                        if (_floatingSurvey!.floatingLabel.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.navy,
+                              borderRadius: BorderRadius.circular(999),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              _floatingSurvey!.floatingLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _floatingDismissed = true),
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.2),
+                        ),
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

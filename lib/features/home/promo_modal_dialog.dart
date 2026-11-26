@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../survey/survey_screen.dart';
+
 import '../../core/app_info.dart';
 import '../../core/cached_image.dart';
 
@@ -235,7 +237,15 @@ class _MultiPromoDialogState extends State<_MultiPromoDialog> {
     final link = (adsData['link'] ?? '/news').toString().trim();
     final externalUrl = (adsData['externalUrl'] ?? '').toString().trim();
 
-    Navigator.pop(context);
+    final nav = Navigator.of(context);
+    nav.pop();
+    final combinedTarget = actionType == 'external' && externalUrl.isNotEmpty ? externalUrl : link;
+    final surveyMatch = RegExp(r'/survey/([a-zA-Z0-9_-]+)', caseSensitive: false).firstMatch(combinedTarget);
+    if (surveyMatch != null) {
+      final slug = surveyMatch.group(1)!;
+      nav.push(MaterialPageRoute<void>(builder: (_) => SurveyFormScreen(slug: slug)));
+      return;
+    }
     if (actionType == 'external' && externalUrl.startsWith('http')) {
       launchUrl(
         Uri.parse(externalUrl),
