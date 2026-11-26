@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/session_store.dart';
 import '../../core/theme.dart';
 import '../../services/bungtemin_api.dart';
+import 'otp_verify_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -192,7 +193,17 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final msg = await _api.requestOtpWa(noreg: raw);
       if (!mounted) return;
-      setState(() => _infoText = msg);
+      final session = await Navigator.of(context).push<UserSession>(
+        MaterialPageRoute<UserSession>(
+          builder: (_) => OtpVerifyScreen(
+            noreg: raw,
+            initialInfo: msg,
+          ),
+        ),
+      );
+      if (session != null && mounted) {
+        widget.onAuthenticated(session);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _errorText = e.toString());
