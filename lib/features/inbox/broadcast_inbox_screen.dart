@@ -151,137 +151,239 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
                   ),
                 )
               : _items.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Belum ada pesan broadcast di kotak masuk.',
-                        style: TextStyle(color: Color(0xFF64748B)),
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                color: AppColors.navy.withValues(alpha: 0.07),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.mark_email_read_outlined,
+                                size: 34,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Kotak Masuk Kosong',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Belum ada pesan broadcast di kotak masuk Anda.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
                         itemCount: _items.length,
                         itemBuilder: (_, idx) {
                           final item = _items[idx];
                           final (catLabel, catColor, catIcon) = _catMeta(item.category);
                           final preview = _plainPreview(item.body);
-                          return Card(
-                            elevation: 0,
-                            margin: const EdgeInsets.only(bottom: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: item.isRead
+                                  ? Colors.white
+                                  : Color.alphaBlend(
+                                      catColor.withValues(alpha: 0.035),
+                                      Colors.white,
+                                    ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
                                 color: item.isRead
                                     ? const Color(0xFFE2E8F0)
                                     : catColor.withValues(alpha: 0.45),
-                                width: item.isRead ? 1 : 1.5,
+                                width: item.isRead ? 1 : 1.4,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF0F172A)
+                                      .withValues(alpha: item.isRead ? 0.03 : 0.07),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => BroadcastInboxDetailScreen(item: item),
-                                  ),
-                                );
-                                _load();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: catColor.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(catIcon, size: 13, color: catColor),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                catLabel,
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: catColor,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        if (!item.isRead)
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(18),
+                                onTap: () async {
+                                  await Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => BroadcastInboxDetailScreen(item: item),
+                                    ),
+                                  );
+                                  _load();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(15),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
                                           Container(
-                                            width: 9,
-                                            height: 9,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 9, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: catColor,
-                                              shape: BoxShape.circle,
+                                              color: catColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(catIcon, size: 13, color: catColor),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  catLabel,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: catColor,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        if (item.isConfirmed || item.hasSubmitted)
-                                          const Padding(
-                                            padding: EdgeInsets.only(left: 6),
-                                            child: Icon(Icons.check_circle_rounded,
-                                                size: 16, color: Color(0xFF059669)),
-                                          ),
-                                        if (item.allowDelete)
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 6),
-                                            child: InkWell(
-                                              borderRadius: BorderRadius.circular(16),
-                                              onTap: () => _deleteItem(item),
-                                              child: const Padding(
-                                                padding: EdgeInsets.all(4),
+                                          if (item.preventScreenshot)
+                                            const Padding(
+                                              padding: EdgeInsets.only(left: 6),
+                                              child: Tooltip(
+                                                message: 'Dilindungi Anti-Screenshot',
                                                 child: Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  size: 18,
-                                                  color: Color(0xFF94A3B8),
+                                                  Icons.shield_outlined,
+                                                  size: 15,
+                                                  color: Color(0xFF64748B),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      item.title,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: item.isRead
-                                            ? FontWeight.w600
-                                            : FontWeight.w800,
-                                        color: const Color(0xFF0F172A),
+                                          const Spacer(),
+                                          if (!item.isRead)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: catColor,
+                                                borderRadius: BorderRadius.circular(999),
+                                              ),
+                                              child: const Text(
+                                                'BARU',
+                                                style: TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          if (item.isConfirmed || item.hasSubmitted)
+                                            const Padding(
+                                              padding: EdgeInsets.only(left: 6),
+                                              child: Icon(Icons.check_circle_rounded,
+                                                  size: 17, color: Color(0xFF059669)),
+                                            ),
+                                          if (item.allowDelete)
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 6),
+                                              child: InkWell(
+                                                borderRadius: BorderRadius.circular(16),
+                                                onTap: () => _deleteItem(item),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(5),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFFEE2E2)
+                                                        .withValues(alpha: 0.7),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.delete_outline_rounded,
+                                                    size: 16,
+                                                    color: Color(0xFFDC2626),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                    ),
-                                    if (preview.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 10),
                                       Text(
-                                        preview,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12.5,
-                                          color: Color(0xFF475569),
+                                        item.title,
+                                        style: TextStyle(
+                                          fontSize: 15.5,
+                                          height: 1.28,
+                                          fontWeight: item.isRead
+                                              ? FontWeight.w700
+                                              : FontWeight.w800,
+                                          color: const Color(0xFF0F172A),
                                         ),
+                                      ),
+                                      if (preview.isNotEmpty) ...[
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          preview,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            height: 1.4,
+                                            color: Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.person_outline_rounded,
+                                            size: 13,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              item.createdByName,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            item.createdAt,
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              color: Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${item.createdByName} • ${item.createdAt}',
-                                      style: const TextStyle(
-                                          fontSize: 11, color: Color(0xFF94A3B8)),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
