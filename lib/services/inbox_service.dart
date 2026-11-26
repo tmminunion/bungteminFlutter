@@ -52,6 +52,7 @@ class BroadcastInboxItem {
     required this.hasSubmitted,
     required this.answers,
     this.preventScreenshot = false,
+    this.allowDelete = true,
   });
 
   final int id;
@@ -70,6 +71,7 @@ class BroadcastInboxItem {
   final bool hasSubmitted;
   final Map<String, dynamic>? answers;
   final bool preventScreenshot;
+  final bool allowDelete;
 
   factory BroadcastInboxItem.fromJson(Map<String, dynamic> json) {
     final rawSchema = json['form_schema'];
@@ -99,6 +101,11 @@ class BroadcastInboxItem {
       preventScreenshot: json['prevent_screenshot'] == true ||
           json['prevent_screenshot'] == 1 ||
           '${json['prevent_screenshot']}' == '1',
+      allowDelete: json['allow_delete'] == null
+          ? true
+          : (json['allow_delete'] == true ||
+              json['allow_delete'] == 1 ||
+              '${json['allow_delete']}' == '1'),
     );
   }
 }
@@ -140,6 +147,23 @@ class InboxService {
           )
           .timeout(_timeout);
     } catch (_) {}
+  }
+
+  Future<void> deleteMessage(int id) async {
+    final res = await http
+        .post(
+          Uri.parse('$_base/delete'),
+          headers: {'Content-Type': 'application/json', ...BtapiAuth.headers()},
+          body: jsonEncode({'id': id}),
+        )
+        .timeout(_timeout);
+    final decoded = jsonDecode(res.body);
+    if (res.statusCode >= 400 || decoded is! Map || decoded['success'] != true) {
+      final msg = decoded is Map
+          ? (decoded['message'] ?? 'Gagal menghapus pesan')
+          : 'HTTP ${res.statusCode}';
+      throw Exception(msg);
+    }
   }
 
   Future<String> submitResponse({

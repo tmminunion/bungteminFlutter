@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_info.dart';
 import '../../core/theme.dart';
-import 'contact_screen.dart';
 
 /// Halaman ringkas & compact khusus Saran Aplikasi (tersimpan ke DB & push FCM ke Admin).
 class FeedbackScreen extends StatefulWidget {
@@ -93,49 +91,6 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       );
     } finally {
       if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _launch(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tidak dapat membuka $url'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _sendExternal({required bool viaWa}) async {
-    final text = _feedbackCtrl.text.trim();
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tuliskan saran terlebih dahulu.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final body = '[Saran Aplikasi ${AppInfo.displayVersion}]\n'
-        'Kategori: $_category\n\n'
-        '$text';
-
-    if (viaWa) {
-      await _launch(
-        'https://wa.me/${ContactScreen.officialWaNumber}?text=${Uri.encodeComponent(body)}',
-      );
-    } else {
-      final subject =
-          Uri.encodeComponent('Saran Aplikasi Bungtemin ($_category)');
-      await _launch(
-        'mailto:${ContactScreen.feedbackEmail}?subject=$subject&body=${Uri.encodeComponent(body)}',
-      );
     }
   }
 
@@ -311,48 +266,6 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF16A34A),
-                          side: const BorderSide(color: Color(0xFFBBF7D0)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () => _sendExternal(viaWa: true),
-                        icon: const Icon(Icons.chat_rounded, size: 16),
-                        label: const Text(
-                          'Via WhatsApp',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.navy,
-                          side: const BorderSide(color: Color(0xFFE2E8F0)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () => _sendExternal(viaWa: false),
-                        icon: const Icon(Icons.email_outlined, size: 16),
-                        label: const Text(
-                          'Via Email',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),

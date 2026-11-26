@@ -46,6 +46,50 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
     }
   }
 
+  Future<void> _deleteItem(BroadcastInboxItem item) async {
+    if (!item.allowDelete) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Pesan?'),
+        content: Text('Hapus "${item.title}" dari kotak masuk Anda?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _service.deleteMessage(item.id);
+      if (!mounted) return;
+      setState(() {
+        _items = _items.where((e) => e.id != item.id).toList();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pesan berhasil dihapus.'),
+          backgroundColor: Color(0xFF059669),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'.replaceFirst('Exception: ', '')),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
+  }
+
   (String, Color, IconData) _catMeta(String cat) {
     switch (cat.toLowerCase()) {
       case 'pdf':
@@ -189,6 +233,22 @@ class _BroadcastInboxScreenState extends State<BroadcastInboxScreen> {
                                             padding: EdgeInsets.only(left: 6),
                                             child: Icon(Icons.check_circle_rounded,
                                                 size: 16, color: Color(0xFF059669)),
+                                          ),
+                                        if (item.allowDelete)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 6),
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(16),
+                                              onTap: () => _deleteItem(item),
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(4),
+                                                child: Icon(
+                                                  Icons.delete_outline_rounded,
+                                                  size: 18,
+                                                  color: Color(0xFF94A3B8),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                       ],
                                     ),
@@ -413,6 +473,41 @@ class _BroadcastInboxDetailScreenState
           'Detail Inbox',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
+        actions: [
+          if (item.allowDelete)
+            IconButton(
+              tooltip: 'Hapus Pesan',
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+              onPressed: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Hapus Pesan?'),
+                    content: Text('Hapus "${item.title}" dari kotak masuk Anda?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Batal'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Hapus'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok != true || !mounted) return;
+                try {
+                  await _service.deleteMessage(item.id);
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  _snack('$e'.replaceFirst('Exception: ', ''), isError: true);
+                }
+              },
+            ),
+        ],
       ),
       body: ListView(
         padding: EdgeInsets.zero,
