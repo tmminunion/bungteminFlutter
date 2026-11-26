@@ -82,8 +82,42 @@ class PushPayload {
         'body': body,
       });
 
-  /// Daftar topik FCM standar Bungtemin (`news`, `feeds`, `<noreg>`, `noreg_<noreg>`).
-  static List<String> buildUserTopics(String? noreg) {
+  /// Topik berbasis peran organisasi yang dikelola oleh `FcmService`.
+  static const List<String> managedRoleTopics = <String>[
+    'kp',
+    'pleno',
+    'puk',
+    'pengurus',
+    'anggota',
+    'member',
+  ];
+
+  /// Ekstrak topik peran FCM (`kp`, `pleno`, `puk`, `pengurus`, `anggota`, `member`)
+  /// dari string `job` user yang sedang login.
+  static List<String> buildRoleTopics(String? job) {
+    final raw = (job ?? '').trim().toLowerCase();
+    if (raw.isEmpty) return const <String>[];
+
+    final roles = <String>[];
+    if (RegExp(r'\bkp\b').hasMatch(raw)) roles.add('kp');
+    if (raw.contains('pleno')) roles.add('pleno');
+    if (RegExp(r'\bpuk\b').hasMatch(raw)) roles.add('puk');
+
+    final isPengurus = roles.isNotEmpty ||
+        raw.contains('pengurus') ||
+        raw.contains('admin');
+    if (isPengurus) {
+      roles.add('pengurus');
+    } else {
+      roles.add('anggota');
+      roles.add('member');
+    }
+    return roles;
+  }
+
+  /// Daftar topik FCM standar Bungtemin (`news`, `feeds`, `<noreg>`, `noreg_<noreg>`,
+  /// serta topik peran `kp`/`pleno`/`puk`/`pengurus`/`anggota`/`member`).
+  static List<String> buildUserTopics(String? noreg, {String? job}) {
     final topics = <String>['news', 'feeds'];
     final clean = (noreg ?? '').trim();
     if (clean.isNotEmpty) {
@@ -91,6 +125,11 @@ class PushPayload {
       final prefixed = 'noreg_$clean';
       if (!topics.contains(prefixed)) {
         topics.add(prefixed);
+      }
+      for (final roleTopic in buildRoleTopics(job)) {
+        if (!topics.contains(roleTopic)) {
+          topics.add(roleTopic);
+        }
       }
     }
     return topics;
@@ -356,40 +395,62 @@ class FcmService {
   }
 
   /// Sinkronisasi token FCM ke NuDB (`firetoken/<noreg>`) dan subscribe topik.
-  Future<void> syncUser(String? noreg) async {
+  Future<void> syncUser(String? noreg, {String? job}) async {
     final cleanNoreg = noreg?.trim();
     _activeNoreg = (cleanNoreg != null && cleanNoreg.isNotEmpty) ? cleanNoreg : null;
     if (kIsWeb || !_initialized) return;
 
     try {
+      String? effectiveJob = job?.trim();
+      if ((effectiveJob == null || effectiveJob.isEmpty) && _activeNoreg != null) {
+        final prefs = await SharedPreferences.getInstance();
+        effectiveJob = (prefs.getString('bt_job') ?? '').trim();
+      }
+
       final messaging = FirebaseMessaging.instance;
       final token = await messaging.getToken();
       if (token != null && token.isNotEmpty) {
         await _persistAndPushToken(token, _activeNoreg);
       }
 
-      for (final topic in PushPayload.buildUserTopics(_activeNoreg)) {
+      final targetTopics =
+          PushPayload.buildUserTopics(_activeNoreg, job: effectiveJob);
+      for (final topic in targetTopics) {
         unawaited(
           messaging.subscribeToTopic(topic).catchError((Object e) {
             debugPrint('[FCM] Gagal subscribe topic $topic: $e');
           }),
         );
       }
+      for (final roleTopic in PushPayload.managedRoleTopics) {
+        if (!targetTopics.contains(roleTopic)) {
+          unawaited(
+            messaging.unsubscribeFromTopic(roleTopic).catchError((Object e) {
+              debugPrint('[FCM] Gagal unsubscribe topic $roleTopic: $e');
+            }),
+          );
+        }
+      }
     } catch (e) {
       debugPrint('[FCM] syncUser gagal: $e');
     }
   }
 
-  /// Hapus langganan topik personal Noreg saat user logout.
+  /// Hapus langganan topik personal Noreg & peran saat user logout.
   Future<void> clearUser(String? previousNoreg) async {
     _activeNoreg = null;
     final clean = previousNoreg?.trim() ?? '';
-    if (kIsWeb || !_initialized || clean.isEmpty) return;
+    if (kIsWeb || !_initialized) return;
 
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.unsubscribeFromTopic(clean);
-      await messaging.unsubscribeFromTopic('noreg_$clean');
+      if (clean.isNotEmpty) {
+        await messaging.unsubscribeFromTopic(clean);
+        await messaging.unsubscribeFromTopic('noreg_$clean');
+      }
+      for (final roleTopic in PushPayload.managedRoleTopics) {
+        await messaging.unsubscribeFromTopic(roleTopic);
+      }
     } catch (e) {
       debugPrint('[FCM] clearUser gagal: $e');
     }

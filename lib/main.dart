@@ -148,7 +148,9 @@ class _BungteminFlutterAppState extends State<BungteminFlutterApp>
                       session: _session,
                       onAuthenticated: (s) {
                         setState(() => _session = s);
-                        unawaited(FcmService.instance.syncUser(s.noreg));
+                        unawaited(
+                          FcmService.instance.syncUser(s.noreg, job: s.job),
+                        );
                       },
                       onLogout: _handleLogout,
                       onOpenTutorial: () =>
