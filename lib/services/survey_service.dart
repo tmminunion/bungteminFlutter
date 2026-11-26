@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import 'session_store.dart';
+import '../core/session_store.dart';
 
 class SurveySummary {
   const SurveySummary({

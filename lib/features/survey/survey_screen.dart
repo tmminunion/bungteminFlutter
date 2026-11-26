@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
-import '../../services/session_store.dart';
+import '../../core/session_store.dart';
 import '../../services/survey_service.dart';
 
 class SurveyListScreen extends StatefulWidget {
