@@ -776,6 +776,166 @@ jobs:
           APP_LOGIN_SECRET: ${{ secrets.APP_LOGIN_SECRET }}
         run: flutter build web --release --base-href "/bungtemin-preview/" --dart-define=NUDB_API_KEY="${NUDB_API_KEY}" --dart-define=APP_LOGIN_SECRET="${APP_LOGIN_SECRET}"
 
+      - name: Inject Preview Access Gate (localStorage)
+        env:
+          PREVIEW_ACCESS_KEY: ${{ secrets.PREVIEW_ACCESS_KEY }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, re
+
+          raw_key = (os.environ.get("PREVIEW_ACCESS_KEY") or "").strip() or "Bungtemin#2026"
+          key_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+          path = "build/web/index.html"
+          html = open(path, "r", encoding="utf-8").read()
+
+          gate_snippet = f"""
+          <style>
+            #bt-gate-overlay {{
+              position: fixed; inset: 0; z-index: 999999;
+              display: flex; align-items: center; justify-content: center;
+              padding: 20px;
+              background: linear-gradient(135deg, #0b1e3b 0%, #13396e 55%, #1d4ed8 100%);
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            #bt-gate-card {{
+              width: 100%; max-width: 390px;
+              background: rgba(255, 255, 255, 0.97);
+              border-radius: 22px; padding: 28px 24px;
+              box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
+              color: #0f172a;
+            }}
+            #bt-gate-badge {{
+              width: 48px; height: 48px; border-radius: 14px;
+              background: linear-gradient(135deg, #0b1e3b, #2563eb);
+              color: #fff; display: flex; align-items: center; justify-content: center;
+              font-size: 22px; margin-bottom: 14px;
+            }}
+            #bt-gate-title {{ margin: 0 0 6px; font-size: 19px; font-weight: 800; color: #0b1e3b; }}
+            #bt-gate-sub {{ margin: 0 0 18px; font-size: 13px; color: #475569; line-height: 1.45; }}
+            #bt-gate-input-wrap {{ position: relative; margin-bottom: 12px; }}
+            #bt-gate-input {{
+              width: 100%; box-sizing: border-box;
+              padding: 13px 44px 13px 14px; border-radius: 12px;
+              border: 1.5px solid #cbd5e1; background: #f8fafc;
+              font-size: 14px; outline: none; transition: border-color .15s;
+            }}
+            #bt-gate-input:focus {{ border-color: #2563eb; background: #fff; }}
+            #bt-gate-toggle {{
+              position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+              border: none; background: transparent; cursor: pointer;
+              color: #64748b; font-size: 12px; font-weight: 700; padding: 4px 6px;
+            }}
+            #bt-gate-err {{
+              display: none; margin: 0 0 12px; padding: 9px 12px;
+              border-radius: 10px; background: #fef2f2; color: #dc2626;
+              font-size: 12.5px; font-weight: 600;
+            }}
+            #bt-gate-btn {{
+              width: 100%; padding: 13px; border: none; border-radius: 12px;
+              background: linear-gradient(135deg, #0b1e3b, #2563eb);
+              color: #fff; font-size: 14.5px; font-weight: 800; cursor: pointer;
+            }}
+            #bt-gate-btn:disabled {{ opacity: 0.65; cursor: wait; }}
+          </style>
+          <div id="bt-gate-overlay" style="display:none;">
+            <form id="bt-gate-card">
+              <div id="bt-gate-badge">🔒</div>
+              <h2 id="bt-gate-title">Bungtemin Web Preview</h2>
+              <p id="bt-gate-sub">Masukkan Access Key untuk membuka preview aplikasi. Key akan disimpan di browser Anda.</p>
+              <div id="bt-gate-input-wrap">
+                <input id="bt-gate-input" type="password" placeholder="Masukkan Access Key..." autocomplete="off" required />
+                <button id="bt-gate-toggle" type="button">Lihat</button>
+              </div>
+              <div id="bt-gate-err">Access Key tidak valid. Silakan coba lagi.</div>
+              <button id="bt-gate-btn" type="submit">Buka Akses</button>
+            </form>
+          </div>
+          <script>
+            (function () {{
+              var STORAGE_KEY = 'bt_preview_access_key';
+              var EXPECTED_HASH = '{key_hash}';
+              var booted = false;
+
+              async function sha256Hex(text) {{
+                var data = new TextEncoder().encode(text);
+                var buf = await crypto.subtle.digest('SHA-256', data);
+                return Array.from(new Uint8Array(buf))
+                  .map(function (b) {{ return b.toString(16).padStart(2, '0'); }})
+                  .join('');
+              }}
+
+              function bootFlutter() {{
+                if (booted) return;
+                booted = true;
+                var ov = document.getElementById('bt-gate-overlay');
+                if (ov) ov.remove();
+                var s = document.createElement('script');
+                s.src = 'flutter_bootstrap.js';
+                s.async = true;
+                document.body.appendChild(s);
+              }}
+
+              async function verifyKey(candidate) {{
+                if (!candidate) return false;
+                var h = await sha256Hex(candidate.trim());
+                return h === EXPECTED_HASH;
+              }}
+
+              (async function init() {{
+                try {{
+                  var saved = localStorage.getItem(STORAGE_KEY) || '';
+                  if (await verifyKey(saved)) {{
+                    bootFlutter();
+                    return;
+                  }}
+                }} catch (_) {{}}
+
+                var ov = document.getElementById('bt-gate-overlay');
+                var form = document.getElementById('bt-gate-card');
+                var inp = document.getElementById('bt-gate-input');
+                var err = document.getElementById('bt-gate-err');
+                var btn = document.getElementById('bt-gate-btn');
+                var tog = document.getElementById('bt-gate-toggle');
+                ov.style.display = 'flex';
+                setTimeout(function () {{ inp.focus(); }}, 50);
+
+                tog.addEventListener('click', function () {{
+                  var isPw = inp.type === 'password';
+                  inp.type = isPw ? 'text' : 'password';
+                  tog.textContent = isPw ? 'Tutup' : 'Lihat';
+                }});
+
+                form.addEventListener('submit', async function (e) {{
+                  e.preventDefault();
+                  err.style.display = 'none';
+                  btn.disabled = true;
+                  try {{
+                    var val = (inp.value || '').trim();
+                    if (await verifyKey(val)) {{
+                      localStorage.setItem(STORAGE_KEY, val);
+                      bootFlutter();
+                    }} else {{
+                      err.style.display = 'block';
+                      inp.select();
+                    }}
+                  }} finally {{
+                    btn.disabled = false;
+                  }}
+                }});
+              }})();
+            }})();
+          </script>
+          """
+
+          pattern = r'<script\s+src=["\']flutter_bootstrap\.js["\'][^>]*></script>'
+          if not re.search(pattern, html):
+              raise SystemExit("flutter_bootstrap.js script tag not found in build/web/index.html")
+          html = re.sub(pattern, gate_snippet, html, count=1)
+          open(path, "w", encoding="utf-8").write(html)
+          print("Injected localStorage preview access gate into build/web/index.html")
+          PY
+
       - name: Prepare GitHub Pages Output
         run: |
           cp build/web/index.html build/web/404.html
