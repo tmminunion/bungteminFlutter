@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/screen_security.dart';
 import '../../core/theme.dart';
 import '../../services/inbox_service.dart';
 
@@ -254,6 +255,9 @@ class _BroadcastInboxDetailScreenState
   @override
   void initState() {
     super.initState();
+    if (widget.item.preventScreenshot) {
+      ScreenSecurity.enable();
+    }
     _confirmed = widget.item.isConfirmed;
     _submitted = widget.item.hasSubmitted;
     if (widget.item.answers != null) {
@@ -276,6 +280,9 @@ class _BroadcastInboxDetailScreenState
 
   @override
   void dispose() {
+    if (widget.item.preventScreenshot) {
+      ScreenSecurity.disable();
+    }
     for (final c in _textCtrls.values) {
       c.dispose();
     }

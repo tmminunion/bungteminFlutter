@@ -51,6 +51,7 @@ class BroadcastInboxItem {
     required this.isConfirmed,
     required this.hasSubmitted,
     required this.answers,
+    this.preventScreenshot = false,
   });
 
   final int id;
@@ -68,6 +69,7 @@ class BroadcastInboxItem {
   final bool isConfirmed;
   final bool hasSubmitted;
   final Map<String, dynamic>? answers;
+  final bool preventScreenshot;
 
   factory BroadcastInboxItem.fromJson(Map<String, dynamic> json) {
     final rawSchema = json['form_schema'];
@@ -94,6 +96,9 @@ class BroadcastInboxItem {
       isConfirmed: json['is_confirmed'] == true,
       hasSubmitted: json['has_submitted'] == true,
       answers: rawAns is Map ? Map<String, dynamic>.from(rawAns) : null,
+      preventScreenshot: json['prevent_screenshot'] == true ||
+          json['prevent_screenshot'] == 1 ||
+          '${json['prevent_screenshot']}' == '1',
     );
   }
 }
